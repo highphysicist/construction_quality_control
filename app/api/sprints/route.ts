@@ -3,6 +3,8 @@ import { getAuth } from "@clerk/nextjs/server";
 import { SprintStatus, type Sprint } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export type PostSprintResponse = {
   sprint: Sprint;
 };

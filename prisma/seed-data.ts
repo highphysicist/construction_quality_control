@@ -1,4 +1,4 @@
-import { type Sprint, type Issue, type Comment } from "@prisma/client";
+import { Prisma, type Sprint, type Comment } from "@prisma/client";
 
 export function generateInitialUserComments(userId: string): Comment[] {
   const now = new Date();
@@ -78,11 +78,13 @@ export function generateInitialUserSprints(userId: string): Sprint[] {
   ];
 }
 
-export function generateInitialUserIssues(userId: string): Issue[] {
+export function generateInitialUserIssues(
+  userId: string
+): Prisma.IssueUncheckedCreateInput[] {
   const now = new Date();
   const slicedUserId = userId ? userId.slice(5, 12) : "init";
 
-  return [
+  const issues: Prisma.IssueUncheckedCreateInput[] = [
     {
       id: "1c5818e1-b920-45b2-" + slicedUserId,
       key: "ISSUE-12",
@@ -326,6 +328,24 @@ export function generateInitialUserIssues(userId: string): Issue[] {
       creatorId: userId,
     },
   ];
+
+  return issues.map((issue) => ({
+    workflowType: "SOIL_MOISTURE_TEST",
+    requestedCount: null,
+    chainage: null,
+    truckDetails: null,
+    sampleLabel: null,
+    initialWeight: null,
+    finalWeight: null,
+    moistureWeight: null,
+    moisturePct: null,
+    levelOneStatus: "PENDING",
+    levelOneNote: null,
+    levelTwoStatus: "PENDING",
+    levelTwoNote: null,
+    extraFields: Prisma.JsonNull,
+    ...issue,
+  }));
 }
 
 export const defaultUsers = [

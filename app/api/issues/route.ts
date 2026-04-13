@@ -18,6 +18,8 @@ import {
 } from "@/utils/helpers";
 import { clerkClient } from "@clerk/nextjs";
 
+export const dynamic = "force-dynamic";
+
 const postIssuesBodyValidator = z.object({
   name: z.string(),
   type: z.enum(["BUG", "STORY", "TASK", "EPIC", "SUBTASK"]),

@@ -6,6 +6,8 @@ import { type DefaultUser } from "@prisma/client";
 import { clerkClient } from "@clerk/nextjs";
 import { filterUserForClient } from "@/utils/helpers";
 
+export const dynamic = "force-dynamic";
+
 export type GetProjectMembersResponse = {
   members: DefaultUser[];
 };

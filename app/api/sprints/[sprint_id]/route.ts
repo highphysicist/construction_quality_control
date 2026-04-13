@@ -4,6 +4,8 @@ import { SprintStatus, type Sprint } from "@prisma/client";
 import { z } from "zod";
 import { getAuth } from "@clerk/nextjs/server";
 
+export const dynamic = "force-dynamic";
+
 const patchSprintBodyValidator = z.object({
   name: z.string().optional(),
   description: z.string().optional(),

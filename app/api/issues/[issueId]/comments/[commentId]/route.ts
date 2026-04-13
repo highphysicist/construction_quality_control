@@ -5,6 +5,8 @@ import { clerkClient } from "@clerk/nextjs";
 import { filterUserForClient } from "@/utils/helpers";
 import { getAuth } from "@clerk/nextjs/server";
 
+export const dynamic = "force-dynamic";
+
 const patchCommentBodyValidator = z.object({
   content: z.string(),
 });

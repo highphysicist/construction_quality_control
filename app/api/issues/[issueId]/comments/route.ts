@@ -6,6 +6,8 @@ import { getAuth } from "@clerk/nextjs/server";
 import { clerkClient } from "@clerk/nextjs";
 import { filterUserForClient } from "@/utils/helpers";
 
+export const dynamic = "force-dynamic";
+
 export type GetIssueCommentsResponse = {
   comments: GetIssueCommentResponse["comment"][];
 };
