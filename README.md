@@ -10,7 +10,7 @@
 - Uses Next js 13.4 app directory structure
 - Explores basic React Server Components
 - Full user authentication lifecycle with Clerk
-- Rate limiting with upstash to avoid spamming
+- Demo mode includes a permissive no-op API rate limiter
 - Modern data fetching using React-Query
 - Simple local React state management, without redux, mobx, or similar
 - Uses Radix UI library for unstyled components and Tailwind for styling
