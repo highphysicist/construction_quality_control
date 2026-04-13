@@ -5,7 +5,6 @@ import {
   PopoverPortal,
   PopoverTrigger,
 } from "@/components/ui/pop-over";
-import { AiFillGithub } from "react-icons/ai";
 
 const NotImplemented: React.FC<{ children: ReactNode; feature?: string }> = ({
   children,
@@ -26,20 +25,9 @@ const NotImplemented: React.FC<{ children: ReactNode; feature?: string }> = ({
             <h1 className="text-sm font-semibold">Not implemented</h1>
             <p className="max-w-32 flex text-xs text-gray-500">
               {feature
-                ? `This is a simplified Jira Clone. The ${feature} feature is not implemented.`
-                : "This is a simplified Jira Clone. This feature is not implemented."}
+                ? `This feature is intentionally omitted in the current demo build: ${feature}.`
+                : "This feature is intentionally omitted in the current demo build."}
             </p>
-            <div className="mt-2 flex items-center gap-x-2">
-              <AiFillGithub className="text-2xl" />
-              <p className="text-sm">Find the repo </p>
-              <a
-                href="https://github.com/sebastianfdz/jira_clone"
-                target="_blank"
-                className="text-sm font-semibold text-blue-600 hover:underline"
-              >
-                here
-              </a>
-            </div>
           </div>
         </PopoverContent>
       </PopoverPortal>

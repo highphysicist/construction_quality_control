@@ -10,27 +10,51 @@ import {
 import { prisma } from "./db";
 import { SprintStatus } from "@prisma/client";
 
+async function ensureProjectExists() {
+  const existingProject = await prisma.project.findUnique({
+    where: { key: "JIRA-CLONE" },
+  });
+
+  if (existingProject) {
+    return existingProject;
+  }
+
+  await initProject();
+
+  return prisma.project.findUnique({
+    where: { key: "JIRA-CLONE" },
+  });
+}
+
+async function ensureUserWorkspace(userId: string) {
+  const existingSprints = await prisma.sprint.findMany({
+    where: { creatorId: userId },
+  });
+  const existingIssues = await prisma.issue.findMany({
+    where: { creatorId: userId, isDeleted: false },
+  });
+
+  if (existingSprints.length > 0 || existingIssues.length > 0) {
+    return;
+  }
+
+  await initDefaultSprints(userId);
+  await initDefaultIssues(userId);
+  await initDefaultIssueComments(userId);
+}
+
 export async function getInitialIssuesFromServer(
   userId: UserResource["id"] | undefined | null
 ) {
+  await ensureProjectExists();
+
+  if (userId) {
+    await ensureUserWorkspace(userId);
+  }
+
   let activeIssues = await prisma.issue.findMany({
     where: { isDeleted: false, creatorId: userId ?? "init" },
   });
-
-  if (userId && (!activeIssues || activeIssues.length === 0)) {
-    // New user, create default issues
-    await initDefaultIssues(userId);
-    // Create comments for default issues
-    await initDefaultIssueComments(userId);
-
-    const newActiveIssues = await prisma.issue.findMany({
-      where: {
-        creatorId: userId,
-        isDeleted: false,
-      },
-    });
-    activeIssues = newActiveIssues;
-  }
 
   if (!activeIssues || activeIssues.length === 0) {
     return [];
@@ -74,15 +98,18 @@ export async function getInitialIssuesFromServer(
 }
 
 export async function getInitialProjectFromServer() {
-  const project = await prisma.project.findUnique({
-    where: { key: "JIRA-CLONE" },
-  });
-  return project;
+  return ensureProjectExists();
 }
 
 export async function getInitialSprintsFromServer(
   userId: UserResource["id"] | undefined
 ) {
+  await ensureProjectExists();
+
+  if (userId) {
+    await ensureUserWorkspace(userId);
+  }
+
   let sprints = await prisma.sprint.findMany({
     where: {
       OR: [{ status: SprintStatus.ACTIVE }, { status: SprintStatus.PENDING }],
@@ -93,17 +120,6 @@ export async function getInitialSprintsFromServer(
     },
   });
 
-  if (userId && (!sprints || sprints.length === 0)) {
-    // New user, create default sprints
-    await initDefaultSprints(userId);
-
-    const newSprints = await prisma.sprint.findMany({
-      where: {
-        creatorId: userId,
-      },
-    });
-    sprints = newSprints;
-  }
   return sprints;
 }
 
