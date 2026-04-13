@@ -16,7 +16,6 @@ import {
   insertItemIntoArray,
   isEpic,
   isNullish,
-  isSubtask,
   issueNotInSearch,
   issueSprintNotInFilters,
   issueTypeNotInFilters,
@@ -29,7 +28,7 @@ import { useProject } from "@/hooks/query-hooks/use-project";
 import { useFiltersContext } from "@/context/use-filters-context";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
 
-const STATUSES: IssueStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
+const STATUSES: IssueStatus[] = ["TODO", "IN_PROGRESS", "INSPECTION", "DONE"];
 
 const Board: React.FC = () => {
   const renderContainerRef = useRef<HTMLDivElement>(null);
@@ -52,8 +51,7 @@ const Board: React.FC = () => {
         if (
           issue.status === status &&
           issue.sprintIsActive &&
-          !isEpic(issue) &&
-          !isSubtask(issue)
+          !isEpic(issue)
         ) {
           if (issueNotInSearch({ issue, search })) return false;
           if (assigneeNotInFilters({ issue, assignees })) return false;
@@ -118,7 +116,10 @@ const Board: React.FC = () => {
             <IssueList
               key={status}
               status={status}
-              issues={filterIssues(issues, status)}
+              issues={getOrderedBoardIssues({
+                activeIssues: filterIssues(issues, status),
+                status,
+              })}
             />
           ))}
         </div>
@@ -194,9 +195,52 @@ function getSortedBoardIssues({
   activeIssues: IssueType[];
   status: IssueStatus;
 }) {
-  return activeIssues
+  return getOrderedBoardIssues({
+    activeIssues,
+    status,
+  });
+}
+
+function getOrderedBoardIssues({
+  activeIssues,
+  status,
+}: {
+  activeIssues: IssueType[];
+  status: IssueStatus;
+}) {
+  const boardIssues = activeIssues
     .filter((issue) => issue.status === status)
     .sort((a, b) => a.boardPosition - b.boardPosition);
+
+  const parents = boardIssues.filter((issue) => !issue.parentId);
+  const childrenByParent = new Map<string, IssueType[]>();
+
+  boardIssues
+    .filter((issue) => issue.parentId)
+    .forEach((issue) => {
+      const parentId = issue.parentId as string;
+      const children = childrenByParent.get(parentId) ?? [];
+      children.push(issue);
+      childrenByParent.set(parentId, children);
+    });
+
+  const ordered: IssueType[] = [];
+
+  parents.forEach((parent) => {
+    ordered.push(parent);
+    const children = (childrenByParent.get(parent.id) ?? []).sort(
+      (a, b) => a.boardPosition - b.boardPosition
+    );
+    ordered.push(...children);
+    childrenByParent.delete(parent.id);
+  });
+
+  Array.from(childrenByParent.values())
+    .flat()
+    .sort((a, b) => a.boardPosition - b.boardPosition)
+    .forEach((issue) => ordered.push(issue));
+
+  return ordered;
 }
 
 export { Board };

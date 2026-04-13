@@ -5,6 +5,8 @@ import {
   type Issue,
   IssueType,
   type DefaultUser,
+  WorkflowReviewStatus,
+  WorkflowType,
 } from "@prisma/client";
 import { z } from "zod";
 import { type GetIssuesResponse } from "../route";
@@ -45,6 +47,7 @@ const patchIssueBodyValidator = z.object({
   description: z.string().optional(),
   type: z.nativeEnum(IssueType).optional(),
   status: z.nativeEnum(IssueStatus).optional(),
+  workflowType: z.nativeEnum(WorkflowType).optional(),
   sprintPosition: z.number().optional(),
   boardPosition: z.number().optional(),
   assigneeId: z.string().nullable().optional(),
@@ -53,6 +56,17 @@ const patchIssueBodyValidator = z.object({
   sprintId: z.string().nullable().optional(),
   isDeleted: z.boolean().optional(),
   sprintColor: z.string().optional(),
+  requestedCount: z.number().int().positive().nullable().optional(),
+  chainage: z.string().nullable().optional(),
+  truckDetails: z.string().nullable().optional(),
+  sampleLabel: z.string().nullable().optional(),
+  initialWeight: z.number().nullable().optional(),
+  finalWeight: z.number().nullable().optional(),
+  levelOneStatus: z.nativeEnum(WorkflowReviewStatus).optional(),
+  levelOneNote: z.string().nullable().optional(),
+  levelTwoStatus: z.nativeEnum(WorkflowReviewStatus).optional(),
+  levelTwoNote: z.string().nullable().optional(),
+  extraFields: z.record(z.unknown()).nullable().optional(),
 });
 
 export type PatchIssueBody = z.infer<typeof patchIssueBodyValidator>;
@@ -65,6 +79,26 @@ type ParamsType = {
     issueId: string;
   };
 };
+
+function calculateMoisture(
+  initialWeight: number | null | undefined,
+  finalWeight: number | null | undefined
+) {
+  if (initialWeight == null || finalWeight == null) {
+    return {
+      moistureWeight: null,
+      moisturePct: null,
+    };
+  }
+
+  const moistureWeight = Number((initialWeight - finalWeight).toFixed(3));
+  const moisturePct =
+    initialWeight === 0
+      ? null
+      : Number(((moistureWeight / initialWeight) * 100).toFixed(3));
+
+  return { moistureWeight, moisturePct };
+}
 
 export async function PATCH(req: NextRequest, { params }: ParamsType) {
   const { userId } = getAuth(req);
@@ -94,6 +128,14 @@ export async function PATCH(req: NextRequest, { params }: ParamsType) {
     return new Response("Issue not found", { status: 404 });
   }
 
+  const initialWeight =
+    valid.initialWeight === undefined
+      ? currentIssue.initialWeight
+      : valid.initialWeight;
+  const finalWeight =
+    valid.finalWeight === undefined ? currentIssue.finalWeight : valid.finalWeight;
+  const metrics = calculateMoisture(initialWeight, finalWeight);
+
   const issue = await prisma.issue.update({
     where: {
       id: issueId,
@@ -111,6 +153,22 @@ export async function PATCH(req: NextRequest, { params }: ParamsType) {
       parentId: valid.parentId === undefined ? undefined : valid.parentId,
       sprintColor: valid.sprintColor ?? undefined,
       boardPosition: valid.boardPosition ?? undefined,
+      workflowType: valid.workflowType,
+      requestedCount:
+        valid.requestedCount === undefined ? undefined : valid.requestedCount,
+      chainage: valid.chainage === undefined ? undefined : valid.chainage,
+      truckDetails:
+        valid.truckDetails === undefined ? undefined : valid.truckDetails,
+      sampleLabel: valid.sampleLabel === undefined ? undefined : valid.sampleLabel,
+      initialWeight,
+      finalWeight,
+      moistureWeight: metrics.moistureWeight,
+      moisturePct: metrics.moisturePct,
+      levelOneStatus: valid.levelOneStatus,
+      levelOneNote: valid.levelOneNote === undefined ? undefined : valid.levelOneNote,
+      levelTwoStatus: valid.levelTwoStatus,
+      levelTwoNote: valid.levelTwoNote === undefined ? undefined : valid.levelTwoNote,
+      extraFields: valid.extraFields === undefined ? undefined : valid.extraFields,
     },
   });
 

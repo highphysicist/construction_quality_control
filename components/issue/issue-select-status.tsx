@@ -36,6 +36,13 @@ export const statuses: StatusObject[] = [
     lgTextColor: "#fff",
   },
   {
+    value: "INSPECTION",
+    smBgColor: "#fff7e5",
+    lgBgColor: "#b45f06",
+    smTextColor: "#9a4d00",
+    lgTextColor: "#fff",
+  },
+  {
     value: "DONE",
     smBgColor: "#e8fcec",
     lgBgColor: "#08845c",
@@ -57,8 +64,9 @@ type StatusMap = {
 
 export const statusMap: StatusMap = {
   DONE: "DONE",
-  IN_PROGRESS: "IN PROGRESS",
-  TODO: "TO DO",
+  INSPECTION: "INSPECTION L1",
+  IN_PROGRESS: "TESTING",
+  TODO: "RFI",
 };
 
 const IssueSelectStatus: React.FC<{

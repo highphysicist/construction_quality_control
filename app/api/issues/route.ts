@@ -5,6 +5,8 @@ import {
   type Issue,
   IssueStatus,
   type DefaultUser,
+  WorkflowReviewStatus,
+  WorkflowType,
 } from "@prisma/client";
 import { z } from "zod";
 import { getAuth } from "@clerk/nextjs/server";
@@ -22,6 +24,18 @@ const postIssuesBodyValidator = z.object({
   reporterId: z.string().nullable(),
   parentId: z.string().nullable(),
   sprintColor: z.string().nullable().optional(),
+  workflowType: z.nativeEnum(WorkflowType).optional(),
+  requestedCount: z.number().int().positive().nullable().optional(),
+  chainage: z.string().nullable().optional(),
+  truckDetails: z.string().nullable().optional(),
+  sampleLabel: z.string().nullable().optional(),
+  initialWeight: z.number().nullable().optional(),
+  finalWeight: z.number().nullable().optional(),
+  levelOneStatus: z.nativeEnum(WorkflowReviewStatus).optional(),
+  levelOneNote: z.string().nullable().optional(),
+  levelTwoStatus: z.nativeEnum(WorkflowReviewStatus).optional(),
+  levelTwoNote: z.string().nullable().optional(),
+  extraFields: z.record(z.unknown()).nullable().optional(),
 });
 
 export type PostIssueBody = z.infer<typeof postIssuesBodyValidator>;
@@ -35,6 +49,8 @@ const patchIssuesBodyValidator = z.object({
   parentId: z.string().nullable().optional(),
   sprintId: z.string().nullable().optional(),
   isDeleted: z.boolean().optional(),
+  levelOneStatus: z.nativeEnum(WorkflowReviewStatus).optional(),
+  levelTwoStatus: z.nativeEnum(WorkflowReviewStatus).optional(),
 });
 
 export type PatchIssuesBody = z.infer<typeof patchIssuesBodyValidator>;
@@ -56,6 +72,26 @@ type IssueT = Issue & {
 export type GetIssuesResponse = {
   issues: IssueT[];
 };
+
+function calculateMoisture(
+  initialWeight: number | null | undefined,
+  finalWeight: number | null | undefined
+) {
+  if (initialWeight == null || finalWeight == null) {
+    return {
+      moistureWeight: null,
+      moisturePct: null,
+    };
+  }
+
+  const moistureWeight = Number((initialWeight - finalWeight).toFixed(3));
+  const moisturePct =
+    initialWeight === 0
+      ? null
+      : Number(((moistureWeight / initialWeight) * 100).toFixed(3));
+
+  return { moistureWeight, moisturePct };
+}
 
 export async function GET(req: NextRequest) {
   const { userId } = getAuth(req);
@@ -159,6 +195,7 @@ export async function POST(req: NextRequest) {
   const k = issues.length + 1;
 
   const positionToInsert = calculateInsertPosition(currentSprintIssues);
+  const metrics = calculateMoisture(valid.initialWeight, valid.finalWeight);
 
   const issue = await prisma.issue.create({
     data: {
@@ -171,6 +208,20 @@ export async function POST(req: NextRequest) {
       boardPosition,
       parentId: valid.parentId,
       sprintColor: valid.sprintColor,
+      workflowType: valid.workflowType,
+      requestedCount: valid.requestedCount,
+      chainage: valid.chainage,
+      truckDetails: valid.truckDetails,
+      sampleLabel: valid.sampleLabel,
+      initialWeight: valid.initialWeight,
+      finalWeight: valid.finalWeight,
+      moistureWeight: metrics.moistureWeight,
+      moisturePct: metrics.moisturePct,
+      levelOneStatus: valid.levelOneStatus,
+      levelOneNote: valid.levelOneNote,
+      levelTwoStatus: valid.levelTwoStatus,
+      levelTwoNote: valid.levelTwoNote,
+      extraFields: valid.extraFields,
       creatorId: userId,
     },
   });
@@ -218,6 +269,8 @@ export async function PATCH(req: NextRequest) {
           isDeleted: valid.isDeleted ?? undefined,
           sprintId: valid.sprintId === undefined ? undefined : valid.sprintId,
           parentId: valid.parentId ?? undefined,
+          levelOneStatus: valid.levelOneStatus,
+          levelTwoStatus: valid.levelTwoStatus,
         },
       });
     })

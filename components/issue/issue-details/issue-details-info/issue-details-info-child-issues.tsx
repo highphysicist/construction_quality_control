@@ -68,7 +68,7 @@ const ChildIssueList: React.FC<{
   return (
     <Fragment>
       <div className="flex items-center justify-between">
-        <h2>Child Issues</h2>
+        <h2>Test Instances</h2>
         <Button
           onClick={() => setIsEditing(true)}
           customColors

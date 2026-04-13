@@ -37,6 +37,7 @@ export function getIssueCountByStatus(issues: IssueType[]) {
     {
       TODO: 0,
       IN_PROGRESS: 0,
+      INSPECTION: 0,
       DONE: 0,
     } as IssueCountType
   );

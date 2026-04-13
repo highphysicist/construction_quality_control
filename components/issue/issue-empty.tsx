@@ -93,7 +93,7 @@ const EmtpyIssue: React.FC<{
         autoFocus
         type="text"
         id="empty-issue-input"
-        placeholder="What needs to be done?"
+        placeholder="Create soil moisture test or sample instance"
         className=" w-full pl-2 pr-20 text-sm focus:outline-none"
         value={name}
         onChange={(e) => setName(e.currentTarget.value)}

@@ -3,6 +3,7 @@ import { type GetIssuesResponse } from "@/app/api/issues/route";
 export type IssueCountType = {
   TODO: number;
   IN_PROGRESS: number;
+  INSPECTION: number;
   DONE: number;
 };
 

@@ -11,11 +11,23 @@ import { EpicName } from "../backlog/issue";
 
 import { useSelectedIssueContext } from "@/context/use-selected-issue-context";
 
-const Issue: React.FC<{ issue: IssueType; index: number }> = ({
+const Issue: React.FC<{
+  issue: IssueType;
+  index: number;
+  variant?: "parent" | "child";
+}> = ({
   issue,
   index,
+  variant = "parent",
 }) => {
   const { setIssueKey } = useSelectedIssueContext();
+
+  const isChild = variant === "child";
+
+  const moistureWeight =
+    issue.moistureWeight == null ? "-" : `${issue.moistureWeight.toFixed(2)} g`;
+  const moisturePct =
+    issue.moisturePct == null ? "-" : `${issue.moisturePct.toFixed(2)}%`;
 
   return (
     <Draggable draggableId={issue.id} index={index}>
@@ -28,6 +40,7 @@ const Issue: React.FC<{ issue: IssueType; index: number }> = ({
           {...dragHandleProps}
           className={clsx(
             isDragging && "bg-white",
+            isChild ? "ml-0" : "",
             "group my-0.5 max-w-full rounded-[3px] border-[0.3px] border-gray-300 bg-white p-2 text-sm shadow-sm shadow-gray-300 hover:bg-gray-200 "
           )}
         >
@@ -49,6 +62,12 @@ const Issue: React.FC<{ issue: IssueType; index: number }> = ({
               <EpicName issue={issue.parent} className="py-0.5 text-sm" />
             ) : null}
           </div>
+          {isChild ? (
+            <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+              <span>Moisture Loss: {moistureWeight}</span>
+              <span className="ml-3">Moisture %: {moisturePct}</span>
+            </div>
+          ) : null}
           <div className="mt-3 flex items-center justify-between">
             <div className="flex items-center gap-x-3">
               <IssueIcon issueType={issue.type} />

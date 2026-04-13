@@ -42,7 +42,18 @@ enum IssueType {
 enum IssueStatus {
     TODO
     IN_PROGRESS
+    INSPECTION
     DONE
+}
+
+enum WorkflowType {
+    SOIL_MOISTURE_TEST
+}
+
+enum WorkflowReviewStatus {
+    PENDING
+    OK
+    NOT_OK
 }
 
 model Issue {
@@ -57,18 +68,35 @@ model Issue {
     reporterId     String      @default("1")
     assigneeId     String?
     parentId       String?
+    parent         Issue?      @relation("IssueChildren", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+    children       Issue[]     @relation("IssueChildren")
     sprintId       String?
     isDeleted      Boolean     @default(false)
     createdAt      DateTime    @default(now())
     updatedAt      DateTime    @updatedAt
     deletedAt      DateTime?
     sprintColor    String?
+    workflowType   WorkflowType @default(SOIL_MOISTURE_TEST)
+    requestedCount Int?
+    chainage       String?
+    truckDetails   String?
+    sampleLabel    String?
+    initialWeight  Float?
+    finalWeight    Float?
+    moistureWeight Float?
+    moisturePct    Float?
+    levelOneStatus WorkflowReviewStatus @default(PENDING)
+    levelOneNote   String?     @db.Text()
+    levelTwoStatus WorkflowReviewStatus @default(PENDING)
+    levelTwoNote   String?     @db.Text()
+    extraFields    Json?
     creatorId      String
     comments       Comment[]
     Sprint         Sprint?     @relation(fields: [sprintId], references: [id])
 
     @@unique([key, creatorId])
     @@index([sprintId])
+    @@index([parentId])
 }
 
 enum SprintStatus {
@@ -110,7 +138,7 @@ model Comment {
     isEdited  Boolean   @default(false)
     issueId   String
     logId     String?
-    Issue     Issue?    @relation(fields: [issueId], references: [id])
+    Issue     Issue?    @relation(fields: [issueId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
     @@index([issueId])
 }
