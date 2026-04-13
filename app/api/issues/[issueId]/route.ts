@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma, ratelimit } from "@/server/db";
 import {
+  Prisma,
   IssueStatus,
   type Issue,
   IssueType,
@@ -100,6 +101,14 @@ function calculateMoisture(
   return { moistureWeight, moisturePct };
 }
 
+function normalizeExtraFields(
+  extraFields: Record<string, unknown> | null | undefined
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (extraFields === undefined) return undefined;
+  if (extraFields === null) return Prisma.JsonNull;
+  return extraFields as Prisma.InputJsonValue;
+}
+
 export async function PATCH(req: NextRequest, { params }: ParamsType) {
   const { userId } = getAuth(req);
   if (!userId) return new Response("Unauthenticated request", { status: 403 });
@@ -168,7 +177,7 @@ export async function PATCH(req: NextRequest, { params }: ParamsType) {
       levelOneNote: valid.levelOneNote === undefined ? undefined : valid.levelOneNote,
       levelTwoStatus: valid.levelTwoStatus,
       levelTwoNote: valid.levelTwoNote === undefined ? undefined : valid.levelTwoNote,
-      extraFields: valid.extraFields === undefined ? undefined : valid.extraFields,
+      extraFields: normalizeExtraFields(valid.extraFields),
     },
   });
 

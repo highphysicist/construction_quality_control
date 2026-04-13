@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { prisma, ratelimit } from "@/server/db";
 import {
+  Prisma,
   IssueType,
   type Issue,
   IssueStatus,
@@ -91,6 +92,14 @@ function calculateMoisture(
       : Number(((moistureWeight / initialWeight) * 100).toFixed(3));
 
   return { moistureWeight, moisturePct };
+}
+
+function normalizeExtraFields(
+  extraFields: Record<string, unknown> | null | undefined
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined {
+  if (extraFields === undefined) return undefined;
+  if (extraFields === null) return Prisma.JsonNull;
+  return extraFields as Prisma.InputJsonValue;
 }
 
 export async function GET(req: NextRequest) {
@@ -221,7 +230,7 @@ export async function POST(req: NextRequest) {
       levelOneNote: valid.levelOneNote,
       levelTwoStatus: valid.levelTwoStatus,
       levelTwoNote: valid.levelTwoNote,
-      extraFields: valid.extraFields,
+      extraFields: normalizeExtraFields(valid.extraFields),
       creatorId: userId,
     },
   });
