@@ -35,6 +35,7 @@ const EmtpyIssue: React.FC<{
   const [type, setType] = useState<IssueType["type"]>(() => initialType());
   const [requestedCount, setRequestedCount] = useState<number>(1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const trimmedName = name.trim();
 
   function initialType() {
     if (isSubtask) return "SUBTASK";
@@ -59,12 +60,12 @@ const EmtpyIssue: React.FC<{
   function handleCreateIssue(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (!name) {
+      if (!trimmedName || isCreating) {
         return;
       }
 
       onCreate({
-        name,
+        name: trimmedName,
         type,
         parentId: parentId ?? null,
         requestedCount: isSubtask ? null : requestedCount,
@@ -77,72 +78,87 @@ const EmtpyIssue: React.FC<{
     <div
       {...props}
       className={clsx(
-        "relative flex items-center gap-x-2 border-2 border-blue-400 bg-white p-1.5",
+        "animate-soft-in rounded-lg border-2 border-blue-400 bg-white p-3 shadow-sm",
         className
       )}
     >
-      {isSubtask ? (
-        <div className="py-4" />
-      ) : isEpic ? (
-        <IssueIcon issueType="EPIC" />
-      ) : (
-        <IssueSelectType
-          currentType={type}
-          dropdownIcon
-          onSelect={handleSelect}
-        />
-      )}
-      <label htmlFor="empty-issue-input" className="sr-only">
-        Empty issue input
-      </label>
-      <input
-        ref={inputRef}
-        autoFocus
-        type="text"
-        id="empty-issue-input"
-        placeholder="Create soil moisture test or sample instance"
-        className=" w-full pl-2 pr-20 text-sm focus:outline-none"
-        value={name}
-        onChange={(e) => setName(e.currentTarget.value)}
-        onKeyDown={handleCreateIssue}
-      />
+      <div className="flex items-center gap-x-2">
+        {isSubtask ? (
+          <div className="py-4" />
+        ) : isEpic ? (
+          <IssueIcon issueType="EPIC" />
+        ) : (
+          <IssueSelectType
+            currentType={type}
+            dropdownIcon
+            onSelect={handleSelect}
+          />
+        )}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <label htmlFor="empty-issue-input" className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+            {isSubtask ? "Test Instance Name" : "Test Name"}
+          </label>
+          <input
+            ref={inputRef}
+            autoFocus
+            type="text"
+            id="empty-issue-input"
+            placeholder="Enter soil moisture test name"
+            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            value={name}
+            onChange={(e) => setName(e.currentTarget.value)}
+            onKeyDown={handleCreateIssue}
+          />
+        </div>
+      </div>
+
       {!isSubtask && !isEpic ? (
-        <input
-          type="number"
-          min={1}
-          value={requestedCount}
-          onChange={(e) => setRequestedCount(Number(e.currentTarget.value) || 1)}
-          className="w-20 rounded border px-2 py-1 text-sm"
-          aria-label="Number of required test instances"
-        />
+        <div className="mt-3 flex items-center justify-between gap-x-3 rounded-md bg-slate-50 px-3 py-2">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Required Test Instances
+            </div>
+            <div className="text-xs text-slate-500">
+              These instances will be created automatically after the test is saved.
+            </div>
+          </div>
+          <input
+            type="number"
+            min={1}
+            value={requestedCount}
+            onChange={(e) => setRequestedCount(Number(e.currentTarget.value) || 1)}
+            className="w-24 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-center"
+            aria-label="Number of required test instances"
+          />
+        </div>
       ) : null}
-      {isCreating ? (
-        <div className="absolute right-2 z-10">
-          <Spinner size="sm" />
-        </div>
-      ) : (
-        <div className="absolute right-2 z-10 flex gap-x-1">
-          <Button
-            className="aspect-square shadow-md"
-            onClick={() => onCancel()}
-          >
-            <MdClose className="text-sm" />
-          </Button>
-          <Button
-            className="aspect-square shadow-md"
-            onClick={() =>
-              onCreate({
-                name,
-                type,
-                parentId: parentId ?? null,
-                requestedCount: isSubtask ? null : requestedCount,
-              })
-            }
-          >
-            <MdCheck className="text-sm" />
-          </Button>
-        </div>
-      )}
+
+      <div className="mt-3 flex items-center justify-end gap-x-2">
+        {isCreating ? (
+          <div className="flex items-center pr-2">
+            <Spinner size="sm" />
+          </div>
+        ) : null}
+        <Button className="shadow-sm" disabled={isCreating} onClick={() => onCancel()}>
+          <MdClose className="mr-1 text-sm" />
+          <span>Cancel</span>
+        </Button>
+        <Button
+          className="bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+          disabled={!trimmedName || isCreating}
+          onClick={() =>
+            onCreate({
+              name: trimmedName,
+              type,
+              parentId: parentId ?? null,
+              requestedCount: isSubtask ? null : requestedCount,
+            })
+          }
+        >
+          <MdCheck className="mr-1 text-sm" />
+          <span>{isSubtask ? "Create Instance" : "Create Test"}</span>
+        </Button>
+      </div>
     </div>
   );
 };

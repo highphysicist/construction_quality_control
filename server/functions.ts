@@ -34,8 +34,21 @@ export async function ensureAuthenticatedAdminUser(
     return existingUser;
   }
 
-  const clerkUser = await clerkClient.users.getUser(userId);
-  const clientUser = filterUserForClient(clerkUser);
+  let clientUser = existingUser;
+  if (!clientUser) {
+    try {
+      const clerkUser = await clerkClient.users.getUser(userId);
+      clientUser = filterUserForClient(clerkUser);
+    } catch {
+      clientUser = {
+        id: userId,
+        name: "Admin",
+        email: `${userId}@construction-qc.local`,
+        avatar: null,
+        role: "ADMIN",
+      };
+    }
+  }
 
   const syncedUser = await prisma.defaultUser.upsert({
     where: { id: userId },
