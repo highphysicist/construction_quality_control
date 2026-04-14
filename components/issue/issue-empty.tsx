@@ -33,7 +33,7 @@ const EmtpyIssue: React.FC<{
 }) => {
   const [name, setName] = useState("");
   const [type, setType] = useState<IssueType["type"]>(() => initialType());
-  const [requestedCount, setRequestedCount] = useState<number>(1);
+  const [requestedCountInput, setRequestedCountInput] = useState("1");
   const inputRef = useRef<HTMLInputElement>(null);
   const trimmedName = name.trim();
 
@@ -57,6 +57,30 @@ const EmtpyIssue: React.FC<{
     setType(type);
     setTimeout(() => focusInput(), 50);
   }
+
+  function getRequestedCount() {
+    const parsedCount = Number.parseInt(requestedCountInput, 10);
+    return Number.isFinite(parsedCount) && parsedCount > 0 ? parsedCount : 1;
+  }
+
+  function updateRequestedCount(nextValue: string) {
+    if (nextValue === "") {
+      setRequestedCountInput("");
+      return;
+    }
+
+    if (!/^\d+$/.test(nextValue)) {
+      return;
+    }
+
+    setRequestedCountInput(nextValue);
+  }
+
+  function changeRequestedCount(delta: number) {
+    const nextCount = Math.max(1, getRequestedCount() + delta);
+    setRequestedCountInput(String(nextCount));
+  }
+
   function handleCreateIssue(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -68,7 +92,7 @@ const EmtpyIssue: React.FC<{
         name: trimmedName,
         type,
         parentId: parentId ?? null,
-        requestedCount: isSubtask ? null : requestedCount,
+        requestedCount: isSubtask ? null : getRequestedCount(),
       });
       setName("");
     }
@@ -122,14 +146,38 @@ const EmtpyIssue: React.FC<{
               These instances will be created automatically after the test is saved.
             </div>
           </div>
-          <input
-            type="number"
-            min={1}
-            value={requestedCount}
-            onChange={(e) => setRequestedCount(Number(e.currentTarget.value) || 1)}
-            className="w-24 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-center"
-            aria-label="Number of required test instances"
-          />
+          <div className="flex items-center gap-x-2">
+            <Button
+              type="button"
+              customColors
+              className="h-10 w-10 justify-center rounded-md border border-slate-300 bg-white text-lg font-semibold text-slate-700 hover:bg-slate-100"
+              onClick={() => changeRequestedCount(-1)}
+              disabled={isCreating}
+              aria-label="Decrease required test instances"
+            >
+              -
+            </Button>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={requestedCountInput}
+              onChange={(e) => updateRequestedCount(e.currentTarget.value)}
+              onBlur={() => setRequestedCountInput(String(getRequestedCount()))}
+              className="h-10 w-20 rounded-md border border-slate-300 bg-white px-3 py-2 text-center text-base font-semibold text-slate-900"
+              aria-label="Number of required test instances"
+            />
+            <Button
+              type="button"
+              customColors
+              className="h-10 w-10 justify-center rounded-md border border-slate-300 bg-white text-lg font-semibold text-slate-700 hover:bg-slate-100"
+              onClick={() => changeRequestedCount(1)}
+              disabled={isCreating}
+              aria-label="Increase required test instances"
+            >
+              +
+            </Button>
+          </div>
         </div>
       ) : null}
 
@@ -144,14 +192,15 @@ const EmtpyIssue: React.FC<{
           <span>Cancel</span>
         </Button>
         <Button
-          className="bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+          customColors
+          className="bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:bg-blue-300"
           disabled={!trimmedName || isCreating}
           onClick={() =>
             onCreate({
               name: trimmedName,
               type,
               parentId: parentId ?? null,
-              requestedCount: isSubtask ? null : requestedCount,
+              requestedCount: isSubtask ? null : getRequestedCount(),
             })
           }
         >

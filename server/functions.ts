@@ -119,22 +119,37 @@ async function ensureUserWorkspace(userId: string) {
 
   if (hasLegacyWorkspace) {
     const issueIds = existingIssues.map((issue) => issue.id);
-    await prisma.comment.deleteMany({
-      where: {
-        issueId: {
-          in: issueIds,
+    await prisma.$transaction(async (tx) => {
+      await tx.comment.deleteMany({
+        where: {
+          issueId: {
+            in: issueIds,
+          },
         },
-      },
-    });
-    await prisma.issue.deleteMany({
-      where: {
-        creatorId: userId,
-      },
-    });
-    await prisma.sprint.deleteMany({
-      where: {
-        creatorId: userId,
-      },
+      });
+
+      // Remove child issues first so legacy parent rows can be dropped safely.
+      await tx.issue.deleteMany({
+        where: {
+          creatorId: userId,
+          parentId: {
+            not: null,
+          },
+        },
+      });
+
+      await tx.issue.deleteMany({
+        where: {
+          creatorId: userId,
+          parentId: null,
+        },
+      });
+
+      await tx.sprint.deleteMany({
+        where: {
+          creatorId: userId,
+        },
+      });
     });
   }
 

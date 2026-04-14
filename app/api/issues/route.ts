@@ -120,9 +120,20 @@ function normalizeExtraFields(
 }
 
 export async function GET(req: NextRequest) {
-  const { userId } = getAuth(req);
-  const issues = await getInitialIssuesFromServer(userId);
-  return NextResponse.json({ issues });
+  try {
+    const { userId } = getAuth(req);
+    const issues = await getInitialIssuesFromServer(userId);
+    return NextResponse.json({ issues });
+  } catch (error) {
+    console.error("[api/issues][GET] Failed to load issues", error);
+    return NextResponse.json(
+      {
+        issues: [],
+        error: "Failed to load issues",
+      },
+      { status: 500 }
+    );
+  }
 }
 
 // POST

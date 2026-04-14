@@ -44,9 +44,19 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { userId } = getAuth(req);
-  const sprints = await getInitialSprintsFromServer(userId ?? undefined);
+  try {
+    const { userId } = getAuth(req);
+    const sprints = await getInitialSprintsFromServer(userId ?? undefined);
 
-  // return NextResponse.json<GetSprintsResponse>({ sprints });
-  return NextResponse.json({ sprints });
+    return NextResponse.json({ sprints });
+  } catch (error) {
+    console.error("[api/sprints][GET] Failed to load sprints", error);
+    return NextResponse.json(
+      {
+        sprints: [],
+        error: "Failed to load sprints",
+      },
+      { status: 500 }
+    );
+  }
 }
