@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/toast";
 import {
   Modal,
   ModalClose,
@@ -10,19 +11,15 @@ import {
   ModalTrigger,
 } from "@/components/ui/modal";
 import { type IssueType } from "@/utils/types";
-import { type WorkflowReviewStatus } from "@prisma/client";
 import { FiEdit3 } from "react-icons/fi";
 import { MdClose } from "react-icons/md";
 import { type PatchIssueBody } from "@/app/api/issues/[issueId]/route";
 import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
 import {
-  canEditLevelOneFields,
-  canEditLevelTwoFields,
   canEditTesterFields,
 } from "@/utils/workflow";
+import { useEffect, useState } from "react";
 import { dateToLongString } from "@/utils/helpers";
-
-const REVIEW_OPTIONS: WorkflowReviewStatus[] = ["PENDING", "OK", "NOT_OK"];
 
 type SoilMoistureEditorModalProps = {
   issue: IssueType;
@@ -38,12 +35,67 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
   triggerLabel,
 }) => {
   const actor = useCurrentWorkflowActor();
+  const [open, setOpen] = useState(false);
+  const [sampleLabel, setSampleLabel] = useState(issue.sampleLabel ?? "");
+  const [initialWeight, setInitialWeight] = useState(
+    issue.initialWeight == null ? "" : String(issue.initialWeight)
+  );
+  const [finalWeight, setFinalWeight] = useState(
+    issue.finalWeight == null ? "" : String(issue.finalWeight)
+  );
+  const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const canEditTester = canEditTesterFields(actor, issue);
-  const canEditL1 = canEditLevelOneFields(actor, issue);
-  const canEditL2 = canEditLevelTwoFields(actor, issue);
+
+  useEffect(() => {
+    if (!open) {
+      setSampleLabel(issue.sampleLabel ?? "");
+      setInitialWeight(issue.initialWeight == null ? "" : String(issue.initialWeight));
+      setFinalWeight(issue.finalWeight == null ? "" : String(issue.finalWeight));
+      setValidationMessage(null);
+    }
+  }, [issue.finalWeight, issue.initialWeight, issue.sampleLabel, open]);
+
+  function handleSave() {
+    const parsedInitial = initialWeight === "" ? null : Number(initialWeight);
+    const parsedFinal = finalWeight === "" ? null : Number(finalWeight);
+
+    if (
+      (parsedInitial != null && Number.isNaN(parsedInitial)) ||
+      (parsedFinal != null && Number.isNaN(parsedFinal))
+    ) {
+      setValidationMessage("Weights must be valid numbers.");
+      return;
+    }
+
+    if ((parsedInitial == null) !== (parsedFinal == null)) {
+      setValidationMessage("Enter both initial and final weights before saving the slip.");
+      return;
+    }
+
+    if (
+      parsedInitial != null &&
+      parsedFinal != null &&
+      parsedInitial <= parsedFinal
+    ) {
+      setValidationMessage("Initial weight must be greater than final weight.");
+      return;
+    }
+
+    setValidationMessage(null);
+    onUpdate({
+      sampleLabel: sampleLabel.trim() || null,
+      initialWeight: parsedInitial,
+      finalWeight: parsedFinal,
+    });
+    toast.success({
+      message: "Soil moisture slip saved",
+      description: "Weights and sample details were updated.",
+    });
+    setOpen(false);
+  }
 
   return (
-    <Modal>
+    <Modal open={open} onOpenChange={setOpen}>
       <ModalTrigger asChild>
         <Button
           customColors
@@ -68,7 +120,7 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
                 {issue.name}
               </ModalTitle>
               <ModalDescription className="mt-1 text-sm text-slate-500">
-                Update the sample, weights, and inspection outcomes for this test instance.
+                Update the sample and weights for this test instance, then save to compute the result.
               </ModalDescription>
             </div>
             <ModalClose asChild>
@@ -85,13 +137,9 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
                 <div className="mt-4 grid gap-4">
                   <Field label="Sample ID">
                     <input
-                      value={issue.sampleLabel ?? ""}
+                      value={sampleLabel}
                       disabled={!canEditTester}
-                      onChange={(e) =>
-                        onUpdate({
-                          sampleLabel: e.currentTarget.value || null,
-                        })
-                      }
+                      onChange={(e) => setSampleLabel(e.currentTarget.value)}
                       placeholder="Sample A"
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     />
@@ -102,16 +150,9 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
                       <input
                         type="number"
                         step="0.001"
-                        value={issue.initialWeight ?? ""}
+                        value={initialWeight}
                         disabled={!canEditTester}
-                        onChange={(e) =>
-                          onUpdate({
-                            initialWeight:
-                              e.currentTarget.value === ""
-                                ? null
-                                : Number(e.currentTarget.value),
-                          })
-                        }
+                        onChange={(e) => setInitialWeight(e.currentTarget.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                       />
                     </Field>
@@ -120,54 +161,35 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
                       <input
                         type="number"
                         step="0.001"
-                        value={issue.finalWeight ?? ""}
+                        value={finalWeight}
                         disabled={!canEditTester}
-                        onChange={(e) =>
-                          onUpdate({
-                            finalWeight:
-                              e.currentTarget.value === ""
-                                ? null
-                                : Number(e.currentTarget.value),
-                          })
-                        }
+                        onChange={(e) => setFinalWeight(e.currentTarget.value)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                       />
                     </Field>
                   </div>
                 </div>
-              </section>
 
-              <section className="rounded-xl border border-slate-200 bg-white p-4">
-                <h3 className="text-sm font-semibold text-slate-800">Inspection Notes</h3>
-                <div className="mt-4 space-y-4">
-                  <ReviewSection
-                    title="Inspection L1"
-                    status={issue.levelOneStatus}
-                    note={issue.levelOneNote}
-                    editable={canEditL1}
-                    signedBy={issue.levelOneSignedById}
-                    signedAt={issue.levelOneSignedAt}
-                    onStatusChange={(status) =>
-                      onUpdate({ levelOneStatus: status })
-                    }
-                    onNoteChange={(note) =>
-                      onUpdate({ levelOneNote: note })
-                    }
-                  />
-                  <ReviewSection
-                    title="Inspection L2"
-                    status={issue.levelTwoStatus}
-                    note={issue.levelTwoNote}
-                    editable={canEditL2}
-                    signedBy={issue.levelTwoSignedById}
-                    signedAt={issue.levelTwoSignedAt}
-                    onStatusChange={(status) =>
-                      onUpdate({ levelTwoStatus: status })
-                    }
-                    onNoteChange={(note) =>
-                      onUpdate({ levelTwoNote: note })
-                    }
-                  />
+                {validationMessage ? (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {validationMessage}
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <ModalClose asChild>
+                    <Button customColors className="bg-slate-100 text-slate-700 hover:bg-slate-200">
+                      Cancel
+                    </Button>
+                  </ModalClose>
+                  <Button
+                    customColors
+                    disabled={!canEditTester}
+                    onClick={handleSave}
+                    className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-300"
+                  >
+                    Save Slip
+                  </Button>
                 </div>
               </section>
             </div>
@@ -231,59 +253,6 @@ const Field: React.FC<{ label: string; children: React.ReactNode }> = ({
       <span className="font-medium text-slate-700">{label}</span>
       {children}
     </label>
-  );
-};
-
-const ReviewSection: React.FC<{
-  title: string;
-  status: WorkflowReviewStatus;
-  note: string | null;
-  editable: boolean;
-  signedBy: string | null;
-  signedAt: Date | null;
-  onStatusChange: (status: WorkflowReviewStatus) => void;
-  onNoteChange: (note: string | null) => void;
-}> = ({
-  title,
-  status,
-  note,
-  editable,
-  signedBy,
-  signedAt,
-  onStatusChange,
-  onNoteChange,
-}) => {
-  return (
-    <div className="rounded-lg border border-slate-200 p-4">
-      <div className="mb-3 text-sm font-semibold text-slate-800">{title}</div>
-      <div className="grid gap-3">
-        <select
-          value={status}
-          disabled={!editable}
-          onChange={(e) => onStatusChange(e.currentTarget.value as WorkflowReviewStatus)}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-        >
-          {REVIEW_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-        <textarea
-          value={note ?? ""}
-          disabled={!editable}
-          onChange={(e) => onNoteChange(e.currentTarget.value || null)}
-          rows={3}
-          placeholder="Add inspection notes"
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-        />
-        <div className="text-xs text-slate-500">
-          {signedAt
-            ? `Signed by ${signedBy ?? "user"} on ${dateToLongString(signedAt)}`
-            : "No signature captured yet."}
-        </div>
-      </div>
-    </div>
   );
 };
 

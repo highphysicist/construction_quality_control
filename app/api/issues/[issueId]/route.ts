@@ -252,6 +252,18 @@ export async function PATCH(req: NextRequest, { params }: ParamsType) {
     testInstance ? finalWeight : null
   );
 
+  if (
+    testInstance &&
+    initialWeight != null &&
+    finalWeight != null &&
+    initialWeight <= finalWeight
+  ) {
+    return new Response(
+      "Initial weight must be greater than final weight before the slip can be saved",
+      { status: 400 }
+    );
+  }
+
   const issue = await prisma.$transaction(async (tx) => {
     const testerRecordedAt =
       touchedTesterFields &&

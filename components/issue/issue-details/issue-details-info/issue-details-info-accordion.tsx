@@ -1,7 +1,7 @@
 import { useUser } from "@clerk/nextjs";
 import { FaChevronUp } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type IssueType } from "@/utils/types";
 import { type WorkflowReviewStatus } from "@prisma/client";
 import {
@@ -15,7 +15,7 @@ import { useSprints } from "@/hooks/query-hooks/use-sprints";
 import { IssueAssigneeSelect } from "../../issue-select-assignee";
 import { useIssues } from "@/hooks/query-hooks/use-issues";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
-import { isParentTest, isSubtask } from "@/utils/helpers";
+import { dateToLongString, isParentTest, isSubtask } from "@/utils/helpers";
 import { SoilMoistureEditorModal } from "./soil-moisture-editor-modal";
 import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
 import {
@@ -25,11 +25,10 @@ import {
   canEditTesterFields,
   canManageAssignee,
 } from "@/utils/workflow";
-import { dateToLongString } from "@/utils/helpers";
 
-const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
-  issue,
-}) => {
+const REVIEW_OPTIONS: WorkflowReviewStatus[] = ["PENDING", "OK", "NOT_OK"];
+
+const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({ issue }) => {
   const { updateIssue } = useIssues();
   const [isAuthenticated, openAuthModal] = useIsAuthenticated();
   const { sprints } = useSprints();
@@ -42,20 +41,25 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   const canEditL1 = canEditLevelOneFields(actor, issue);
   const canEditL2 = canEditLevelTwoFields(actor, issue);
 
-  function handleAutoAssign() {
+  function requireAuth() {
     if (!isAuthenticated) {
       openAuthModal();
-      return;
+      return false;
     }
+
+    return true;
+  }
+
+  function handleAutoAssign() {
+    if (!requireAuth() || !user?.id) return;
 
     updateIssue({
       issueId: issue.id,
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      assigneeId: user!.id,
+      assigneeId: user.id,
     });
   }
-
-  function updateMoistureFields(payload: {
+  
+  function updateIssueFields(payload: {
     requestedCount?: number | null;
     chainage?: string | null;
     truckDetails?: string | null;
@@ -67,10 +71,7 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
     levelTwoStatus?: WorkflowReviewStatus;
     levelTwoNote?: string | null;
   }) {
-    if (!isAuthenticated) {
-      openAuthModal();
-      return;
-    }
+    if (!requireAuth()) return;
 
     updateIssue({
       issueId: issue.id,
@@ -86,27 +87,20 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
       type="single"
       collapsible
     >
-      <AccordionItem value={"details"}>
+      <AccordionItem value="details">
         <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
           <div className="flex items-center gap-x-1">
             <span className="text-sm">Details</span>
-            <span className="text-xs text-gray-500">
-              (Assignee, Sprint, Reporter)
-            </span>
+            <span className="text-xs text-gray-500">(Assignee, Sprint, Reporter)</span>
           </div>
-          <FaChevronUp
-            className="mr-2 text-xs text-black transition-transform"
-            aria-hidden
-          />
+          <FaChevronUp className="mr-2 text-xs text-black transition-transform" aria-hidden />
         </AccordionTrigger>
         <AccordionContent className="flex flex-col bg-white px-3 [&[data-state=open]]:py-2">
           <div
             data-state={issue.assignee ? "assigned" : "unassigned"}
             className="my-2 grid grid-cols-3 [&[data-state=assigned]]:items-center"
           >
-            <span className="text-sm font-semibold text-gray-600">
-              Assignee
-            </span>
+            <span className="text-sm font-semibold text-gray-600">Assignee</span>
             <div className="flex flex-col">
               <IssueAssigneeSelect issue={issue} />
               <Button
@@ -121,58 +115,48 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
               </Button>
             </div>
           </div>
+
           <div className="my-4 grid grid-cols-3 items-center">
             <span className="text-sm font-semibold text-gray-600">Sprint</span>
             <div className="flex items-center">
               <span className="text-sm text-gray-700">
-                {sprints?.find((sprint) => sprint?.id == issue.sprintId)
-                  ?.name ?? "None"}
+                {sprints?.find((sprint) => sprint?.id === issue.sprintId)?.name ?? "None"}
               </span>
             </div>
           </div>
-          <div className="my-2 grid grid-cols-3  items-center">
-            <span className="text-sm font-semibold text-gray-600">
-              Reporter
-            </span>
-            <div className="flex items-center gap-x-3 ">
+
+          <div className="my-2 grid grid-cols-3 items-center">
+            <span className="text-sm font-semibold text-gray-600">Reporter</span>
+            <div className="flex items-center gap-x-3">
               <Avatar
                 src={issue.reporter?.avatar}
                 alt={`${issue.reporter?.name ?? "Unassigned"}`}
               />
-              <span className="whitespace-nowrap text-sm">
-                {issue.reporter?.name}
-              </span>
+              <span className="whitespace-nowrap text-sm">{issue.reporter?.name}</span>
             </div>
           </div>
         </AccordionContent>
       </AccordionItem>
 
       {isParentTest(issue) ? (
-        <AccordionItem value={"test-config"}>
+        <AccordionItem value="test-config">
           <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
             <div className="flex items-center gap-x-1">
               <span className="text-sm">Test Configuration</span>
-              <span className="text-xs text-gray-500">
-                (Required instances, chainage, truck details)
-              </span>
+              <span className="text-xs text-gray-500">(Required instances, chainage, truck details)</span>
             </div>
-            <FaChevronUp
-              className="mr-2 text-xs text-black transition-transform"
-              aria-hidden
-            />
+            <FaChevronUp className="mr-2 text-xs text-black transition-transform" aria-hidden />
           </AccordionTrigger>
           <AccordionContent className="flex flex-col gap-y-3 bg-white px-3 py-3">
             <div className="grid grid-cols-3 items-center gap-2">
-              <span className="text-sm font-semibold text-gray-600">
-                Required Test Instances
-              </span>
+              <span className="text-sm font-semibold text-gray-600">Required Test Instances</span>
               <input
                 type="number"
                 min={1}
                 value={issue.requestedCount ?? 1}
                 disabled={!canEditConfig}
                 onChange={(e) =>
-                  updateMoistureFields({
+                  updateIssueFields({
                     requestedCount: Number(e.currentTarget.value) || 1,
                   })
                 }
@@ -181,12 +165,8 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
             </div>
 
             <div className="grid grid-cols-3 items-center gap-2 rounded bg-slate-50 px-2 py-1.5">
-              <span className="text-sm font-semibold text-gray-600">
-                Existing Test Instances
-              </span>
-              <span className="col-span-2 text-sm text-slate-700">
-                {issue.children.length}
-              </span>
+              <span className="text-sm font-semibold text-gray-600">Existing Test Instances</span>
+              <span className="col-span-2 text-sm text-slate-700">{issue.children.length}</span>
             </div>
 
             <div className="grid grid-cols-3 items-center gap-2">
@@ -194,24 +174,18 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
               <input
                 value={issue.chainage ?? ""}
                 disabled={!canEditConfig}
-                onChange={(e) =>
-                  updateMoistureFields({ chainage: e.currentTarget.value || null })
-                }
+                onChange={(e) => updateIssueFields({ chainage: e.currentTarget.value || null })}
                 placeholder="0+120 to 0+180"
                 className="col-span-2 rounded border px-2 py-1 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
               />
             </div>
 
             <div className="grid grid-cols-3 items-start gap-2">
-              <span className="pt-1 text-sm font-semibold text-gray-600">
-                Truck Details
-              </span>
+              <span className="pt-1 text-sm font-semibold text-gray-600">Truck Details</span>
               <textarea
                 value={issue.truckDetails ?? ""}
                 disabled={!canEditConfig}
-                onChange={(e) =>
-                  updateMoistureFields({ truckDetails: e.currentTarget.value || null })
-                }
+                onChange={(e) => updateIssueFields({ truckDetails: e.currentTarget.value || null })}
                 rows={2}
                 className="col-span-2 rounded border px-2 py-1 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
               />
@@ -221,18 +195,13 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
       ) : null}
 
       {isSubtask(issue) ? (
-        <AccordionItem value={"soil-moisture"}>
+        <AccordionItem value="soil-moisture">
           <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
             <div className="flex items-center gap-x-1">
               <span className="text-sm">Soil Moisture Test Slip</span>
-              <span className="text-xs text-gray-500">
-                (Weights, approvals, signatures)
-              </span>
+              <span className="text-xs text-gray-500">(Weights, approvals, signatures)</span>
             </div>
-            <FaChevronUp
-              className="mr-2 text-xs text-black transition-transform"
-              aria-hidden
-            />
+            <FaChevronUp className="mr-2 text-xs text-black transition-transform" aria-hidden />
           </AccordionTrigger>
           <AccordionContent className="bg-white px-3 py-3">
             <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
@@ -242,15 +211,12 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
                     Test Slip Summary
                   </div>
                   <div className="text-sm text-slate-600">
-                    Enter tester weights and approval decisions in the dedicated slip editor. Computed fields remain read only.
+                    Enter tester weights in the slip editor, then save to compute moisture loss and percentage. Inspection approvals are saved separately below.
                   </div>
                 </div>
 
                 <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
-                  <SummaryRow
-                    label="Sample ID"
-                    value={issue.sampleLabel?.trim() || "Not set"}
-                  />
+                  <SummaryRow label="Sample ID" value={issue.sampleLabel?.trim() || "Not set"} />
                   <SummaryRow
                     label="Initial Weight"
                     value={
@@ -295,12 +261,8 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
 
                 <SoilMoistureEditorModal
                   issue={issue}
-                  onUpdate={updateMoistureFields}
-                  triggerLabel={
-                    canEditSlip || canEditL1 || canEditL2
-                      ? "Open Soil Moisture Slip Editor"
-                      : "View Soil Moisture Slip"
-                  }
+                  onUpdate={updateIssueFields}
+                  triggerLabel={canEditSlip ? "Open Soil Moisture Slip Editor" : "View Soil Moisture Slip"}
                   triggerClassName="w-full justify-center rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
                 />
 
@@ -311,6 +273,14 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
                     note={issue.levelOneNote}
                     editable={canEditL1}
                     helperText="L1 records acceptance or rejection with comments and signature timestamp."
+                    signedBy={issue.levelOneSignedById}
+                    signedAt={issue.levelOneSignedAt}
+                    onSave={({ status, note }) =>
+                      updateIssueFields({
+                        levelOneStatus: status,
+                        levelOneNote: note,
+                      })
+                    }
                   />
                   <ReviewCard
                     title="Inspection L2"
@@ -318,6 +288,14 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
                     note={issue.levelTwoNote}
                     editable={canEditL2}
                     helperText="L2 provides the final approval decision and closing comment."
+                    signedBy={issue.levelTwoSignedById}
+                    signedAt={issue.levelTwoSignedAt}
+                    onSave={({ status, note }) =>
+                      updateIssueFields({
+                        levelTwoStatus: status,
+                        levelTwoNote: note,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -329,10 +307,7 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   );
 };
 
-const SummaryRow: React.FC<{ label: string; value: string }> = ({
-  label,
-  value,
-}) => {
+const SummaryRow: React.FC<{ label: string; value: string }> = ({ label, value }) => {
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
       <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
@@ -349,7 +324,18 @@ const ReviewCard: React.FC<{
   note: string | null;
   editable: boolean;
   helperText: string;
-}> = ({ title, status, note, editable, helperText }) => {
+  signedBy?: string | null;
+  signedAt?: Date | null;
+  onSave: (payload: { status: WorkflowReviewStatus; note: string | null }) => void;
+}> = ({ title, status, note, editable, helperText, signedBy, signedAt, onSave }) => {
+  const [draftStatus, setDraftStatus] = useState(status);
+  const [draftNote, setDraftNote] = useState(note ?? "");
+
+  useEffect(() => {
+    setDraftStatus(status);
+    setDraftNote(note ?? "");
+  }, [status, note]);
+
   return (
     <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -372,9 +358,44 @@ const ReviewCard: React.FC<{
           </span>
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        {note?.trim() || "No inspection note added yet."}
-      </p>
+
+      <div className="mt-4 grid gap-3">
+        <select
+          value={draftStatus}
+          disabled={!editable}
+          onChange={(e) => setDraftStatus(e.currentTarget.value as WorkflowReviewStatus)}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+        >
+          {REVIEW_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <textarea
+          value={draftNote}
+          disabled={!editable}
+          onChange={(e) => setDraftNote(e.currentTarget.value)}
+          rows={3}
+          placeholder="Add inspection notes"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+        />
+        <div className="text-xs text-slate-500">
+          {signedAt
+            ? `Signed by ${signedBy ?? "user"} on ${dateToLongString(signedAt)}`
+            : "No signature captured yet."}
+        </div>
+        <div className="flex justify-end">
+          <Button
+            customColors
+            disabled={!editable}
+            onClick={() => onSave({ status: draftStatus, note: draftNote || null })}
+            className="bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 disabled:bg-slate-300"
+          >
+            Save {title}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -63,9 +63,19 @@ const patchIssuesBodyValidator = z.object({
 export type PatchIssuesBody = z.infer<typeof patchIssuesBodyValidator>;
 
 type IssueT = Issue & {
+  testerRecordedAt: Date | null;
+  levelOneSignedById: string | null;
+  levelOneSignedAt: Date | null;
+  levelTwoSignedById: string | null;
+  levelTwoSignedAt: Date | null;
   children: IssueT[];
   sprintIsActive: boolean;
   parent: Issue & {
+    testerRecordedAt: Date | null;
+    levelOneSignedById: string | null;
+    levelOneSignedAt: Date | null;
+    levelTwoSignedById: string | null;
+    levelTwoSignedAt: Date | null;
     sprintIsActive: boolean;
     children: IssueT[];
     parent: null;

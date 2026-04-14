@@ -13,32 +13,14 @@ const useUpdateIssue = () => {
     ["issues"],
     api.issues.patchIssue,
     {
-      // OPTIMISTIC UPDATE
-      onMutate: async (newIssue) => {
-        // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      onMutate: async () => {
         await queryClient.cancelQueries(["issues"]);
-        // Snapshot the previous value
-        const previousIssues = queryClient.getQueryData<IssueType[]>([
-          "issues",
-        ]);
 
-        queryClient.setQueryData(["issues"], (old?: IssueType[]) => {
-          const newIssues = (old ?? []).map((issue) => {
-            const { issueId, ...updatedProps } = newIssue;
-            if (issue.id === issueId) {
-              // Assign the new prop values to the issue
-              return Object.assign(issue, updatedProps);
-            }
-            return issue;
-          });
-          return newIssues;
-        });
-        // }
-        // Return a context object with the snapshotted value
+        const previousIssues = queryClient.getQueryData<IssueType[]>(["issues"]);
+
         return { previousIssues };
       },
       onError: (err: AxiosError, newIssue, context) => {
-        // If the mutation fails, use the context returned from onMutate to roll back
         queryClient.setQueryData(["issues"], context?.previousIssues);
 
         if (err?.response?.data == "Too many requests") {
@@ -48,12 +30,51 @@ const useUpdateIssue = () => {
 
         toast.error({
           message: `Something went wrong while updating the issue ${newIssue.issueId}`,
-          description: "Please try again later.",
+          description:
+            typeof err?.response?.data === "string"
+              ? err.response.data
+              : "Please try again later.",
+        });
+      },
+      onSuccess: (updatedIssue) => {
+        queryClient.setQueryData(["issues"], (old?: IssueType[]) => {
+          return (old ?? []).map((issue) => {
+            if (issue.id === updatedIssue.id) {
+              return {
+                ...issue,
+                ...updatedIssue,
+                assignee: updatedIssue.assignee ?? issue.assignee,
+              } as IssueType;
+            }
+
+            if (issue.parentId === updatedIssue.id) {
+              return {
+                ...issue,
+                parent: issue.parent
+                  ? ({
+                      ...issue.parent,
+                      ...updatedIssue,
+                    } as IssueType["parent"])
+                  : issue.parent,
+              } as IssueType;
+            }
+
+            if (issue.id === updatedIssue.parentId) {
+              return {
+                ...issue,
+                children: issue.children.map((child) =>
+                  child.id === updatedIssue.id
+                    ? ({ ...child, ...updatedIssue } as IssueType)
+                    : child
+                ),
+              } as IssueType;
+            }
+
+            return issue;
+          });
         });
       },
       onSettled: () => {
-        // Always refetch after error or success
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         queryClient.invalidateQueries(["issues"]);
       },
     }
