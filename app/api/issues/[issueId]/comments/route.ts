@@ -33,24 +33,32 @@ export async function GET(
 
   const userIds = comments.map((c) => c.authorId);
 
-  // USE THIS IF RUNNING LOCALLY -----------------------
-  // const users = await prisma.defaultUser.findMany({
-  //   where: {
-  //     id: {
-  //       in: userIds,
-  //     },
-  //   },
-  // });
-  // --------------------------------------------------
+  const dbUsers = await prisma.defaultUser.findMany({
+    where: {
+      id: {
+        in: userIds,
+      },
+    },
+  });
 
-  // COMMENT THIS IF RUNNING LOCALLY ------------------
-  const users = (
-    await clerkClient.users.getUserList({
-      userId: userIds,
-      limit: 110,
-    })
-  ).map(filterUserForClient);
-  // --------------------------------------------------
+  let clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>> = [];
+  if (userIds.length > 0) {
+    try {
+      clerkUsers = await clerkClient.users.getUserList({
+        userId: userIds,
+        limit: 110,
+      });
+    } catch {
+      clerkUsers = [];
+    }
+  }
+
+  const users = [
+    ...dbUsers,
+    ...clerkUsers.map(filterUserForClient).filter((clerkUser) => {
+      return !dbUsers.some((dbUser) => dbUser.id === clerkUser.id);
+    }),
+  ];
 
   const commentsForClient = comments.map((comment) => {
     const author = users.find((u) => u.id === comment.authorId) ?? null;

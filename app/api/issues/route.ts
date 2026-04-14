@@ -128,24 +128,32 @@ export async function GET(req: NextRequest) {
     .flatMap((issue) => [issue.assigneeId, issue.reporterId] as string[])
     .filter(Boolean);
 
-  // USE THIS IF RUNNING LOCALLY -----------------------
-  // const users = await prisma.defaultUser.findMany({
-  //   where: {
-  //     id: {
-  //       in: userIds,
-  //     },
-  //   },
-  // });
-  // --------------------------------------------------
+  const dbUsers = await prisma.defaultUser.findMany({
+    where: {
+      id: {
+        in: userIds,
+      },
+    },
+  });
 
-  // COMMENT THIS IF RUNNING LOCALLY ------------------
-  const users = (
-    await clerkClient.users.getUserList({
-      userId: userIds,
-      limit: 10,
-    })
-  ).map(filterUserForClient);
-  // --------------------------------------------------
+  let clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>> = [];
+  if (userIds.length > 0) {
+    try {
+      clerkUsers = await clerkClient.users.getUserList({
+        userId: userIds,
+        limit: 10,
+      });
+    } catch {
+      clerkUsers = [];
+    }
+  }
+
+  const users = [
+    ...dbUsers,
+    ...clerkUsers.map(filterUserForClient).filter((clerkUser) => {
+      return !dbUsers.some((dbUser) => dbUser.id === clerkUser.id);
+    }),
+  ];
 
   const issuesForClient = generateIssuesForClient(
     activeIssues,

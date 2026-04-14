@@ -10,7 +10,7 @@ import { BacklogHeader } from "./header";
 import { useProject } from "@/hooks/query-hooks/use-project";
 
 const Backlog: React.FC = () => {
-  const { project } = useProject();
+  const { project, projectIsLoading } = useProject();
   const { issueKey, setIssueKey } = useSelectedIssueContext();
   const renderContainerRef = React.useRef<HTMLDivElement>(null);
 
@@ -20,6 +20,7 @@ const Backlog: React.FC = () => {
     renderContainerRef.current.style.height = `calc(100vh - ${calculatedHeight}px)`;
   }, []);
 
+  if (projectIsLoading) return null;
   if (!project) return null;
 
   return (

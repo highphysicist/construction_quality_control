@@ -3,9 +3,17 @@ import { api } from "@/utils/api";
 import { useQuery } from "@tanstack/react-query";
 
 export const useProject = () => {
-  const { data: project, isLoading: projectIsLoading } = useQuery(
+  const {
+    data: project,
+    isLoading: projectIsLoading,
+    isFetching: projectIsFetching,
+    isError: projectIsError,
+  } = useQuery(
     ["project"],
-    api.project.getProject
+    api.project.getProject,
+    {
+      refetchOnMount: false,
+    }
   );
   const { data: members } = useQuery(
     ["project-members"],
@@ -18,6 +26,8 @@ export const useProject = () => {
   return {
     project,
     projectIsLoading,
+    projectIsFetching,
+    projectIsError,
     members,
   };
 };

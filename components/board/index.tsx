@@ -33,9 +33,9 @@ const STATUSES: IssueStatus[] = ["TODO", "IN_PROGRESS", "INSPECTION", "DONE"];
 const Board: React.FC = () => {
   const renderContainerRef = useRef<HTMLDivElement>(null);
 
-  const { issues } = useIssues();
-  const { sprints } = useSprints();
-  const { project } = useProject();
+  const { issues, issuesLoading } = useIssues();
+  const { sprints, sprintsLoading } = useSprints();
+  const { project, projectIsLoading } = useProject();
   const {
     search,
     assignees,
@@ -78,6 +78,10 @@ const Board: React.FC = () => {
     const calculatedHeight = renderContainerRef.current.offsetTop + 20;
     renderContainerRef.current.style.height = `calc(100vh - ${calculatedHeight}px)`;
   }, []);
+
+  if (issuesLoading || sprintsLoading || projectIsLoading) {
+    return null;
+  }
 
   if (!issues || !sprints || !project) {
     return null;

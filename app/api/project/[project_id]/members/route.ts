@@ -26,24 +26,34 @@ export async function GET(req: NextRequest, { params }: MembersParams) {
     },
   });
 
-  // USE THIS IF RUNNING LOCALLY -----------------------
-  // const users = await prisma.defaultUser.findMany({
-  //   where: {
-  //     id: {
-  //       in: members.map((member) => member.id),
-  //     },
-  //   },
-  // });
-  // --------------------------------------------------
+  const memberIds = members.map((member) => member.id);
 
-  // COMMENT THIS IF RUNNING LOCALLY ------------------
-  const users = (
-    await clerkClient.users.getUserList({
-      userId: members.map((member) => member.id),
-      limit: 20,
-    })
-  ).map(filterUserForClient);
-  // --------------------------------------------------
+  const dbUsers = await prisma.defaultUser.findMany({
+    where: {
+      id: {
+        in: memberIds,
+      },
+    },
+  });
+
+  let clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>> = [];
+  if (memberIds.length > 0) {
+    try {
+      clerkUsers = await clerkClient.users.getUserList({
+        userId: memberIds,
+        limit: 20,
+      });
+    } catch {
+      clerkUsers = [];
+    }
+  }
+
+  const users = [
+    ...dbUsers,
+    ...clerkUsers.map(filterUserForClient).filter((clerkUser) => {
+      return !dbUsers.some((dbUser) => dbUser.id === clerkUser.id);
+    }),
+  ];
 
   // return NextResponse.json<GetProjectMembersResponse>({ members:users });
   return NextResponse.json({ members: users });

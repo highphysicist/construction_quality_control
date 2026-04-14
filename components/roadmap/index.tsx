@@ -6,14 +6,13 @@ import { RoadmapHeader } from "./header";
 import { useProject } from "@/hooks/query-hooks/use-project";
 import Split from "react-split";
 import { IssueDetails } from "../issue/issue-details";
-import { notFound } from "next/navigation";
 import { EpicsTable } from "./epics-table";
 
 const Roadmap: React.FC = () => {
   const { issueKey, setIssueKey } = useSelectedIssueContext();
   const renderContainerRef = useRef<HTMLDivElement>(null);
 
-  const { project } = useProject();
+  const { project, projectIsLoading } = useProject();
 
   useLayoutEffect(() => {
     if (!renderContainerRef.current) return;
@@ -21,9 +20,8 @@ const Roadmap: React.FC = () => {
     renderContainerRef.current.style.height = `calc(100vh - ${calculatedHeight}px)`;
   }, []);
 
-  if (!project) {
-    return notFound();
-  }
+  if (projectIsLoading) return null;
+  if (!project) return null;
 
   return (
     <Fragment>

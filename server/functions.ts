@@ -16,10 +16,14 @@ async function ensureProjectExists() {
   });
 
   if (existingProject) {
+    await initDefaultUsers();
+    await initDefaultProjectMembers();
     return existingProject;
   }
 
   await initProject();
+  await initDefaultUsers();
+  await initDefaultProjectMembers();
 
   return prisma.project.findUnique({
     where: { key: "JIRA-CLONE" },
@@ -70,24 +74,32 @@ export async function getInitialIssuesFromServer(
     .flatMap((issue) => [issue.assigneeId, issue.reporterId] as string[])
     .filter(Boolean);
 
-  // USE THIS IF RUNNING LOCALLY ----------------------
-  // const users = await prisma.defaultUser.findMany({
-  //   where: {
-  //     id: {
-  //       in: userIds,
-  //     },
-  //   },
-  // });
-  // --------------------------------------------------
+  const dbUsers = await prisma.defaultUser.findMany({
+    where: {
+      id: {
+        in: userIds,
+      },
+    },
+  });
 
-  // COMMENT THIS IF RUNNING LOCALLY ------------------
-  const users = (
-    await clerkClient.users.getUserList({
-      userId: userIds,
-      limit: 20,
-    })
-  ).map(filterUserForClient);
-  // --------------------------------------------------
+  let clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>> = [];
+  if (userIds.length > 0) {
+    try {
+      clerkUsers = await clerkClient.users.getUserList({
+        userId: userIds,
+        limit: 20,
+      });
+    } catch {
+      clerkUsers = [];
+    }
+  }
+
+  const users = [
+    ...dbUsers,
+    ...clerkUsers.map(filterUserForClient).filter((clerkUser) => {
+      return !dbUsers.some((dbUser) => dbUser.id === clerkUser.id);
+    }),
+  ];
 
   const issues = generateIssuesForClient(
     activeIssues,
