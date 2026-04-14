@@ -18,7 +18,13 @@ import { useIsAuthenticated } from "@/hooks/use-is-authed";
 import { isParentTest, isSubtask } from "@/utils/helpers";
 import { SoilMoistureEditorModal } from "./soil-moisture-editor-modal";
 import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
-import { canEditTestConfiguration, canManageAssignee } from "@/utils/workflow";
+import {
+  canEditLevelOneFields,
+  canEditLevelTwoFields,
+  canEditTestConfiguration,
+  canEditTesterFields,
+  canManageAssignee,
+} from "@/utils/workflow";
 
 const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   issue,
@@ -31,6 +37,9 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   const actor = useCurrentWorkflowActor();
   const canEditConfig = canEditTestConfiguration(actor, issue);
   const canAssign = canManageAssignee(actor, issue);
+  const canEditSlip = canEditTesterFields(actor, issue);
+  const canEditL1 = canEditLevelOneFields(actor, issue);
+  const canEditL2 = canEditLevelTwoFields(actor, issue);
 
   function handleAutoAssign() {
     if (!isAuthenticated) {
@@ -212,69 +221,106 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
 
       {isSubtask(issue) ? (
         <AccordionItem value={"soil-moisture"}>
-        <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
-          <div className="flex items-center gap-x-1">
-            <span className="text-sm">Soil Moisture Test Slip</span>
-            <span className="text-xs text-gray-500">
-              (Editable in dedicated modal)
-            </span>
-          </div>
-          <FaChevronUp
-            className="mr-2 text-xs text-black transition-transform"
-            aria-hidden
-          />
-        </AccordionTrigger>
-        <AccordionContent className="bg-white px-3 py-3">
-          <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Test Instance Snapshot
+          <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
+            <div className="flex items-center gap-x-1">
+              <span className="text-sm">Soil Moisture Test Slip</span>
+              <span className="text-xs text-gray-500">
+                (Weights, approvals, signatures)
+              </span>
+            </div>
+            <FaChevronUp
+              className="mr-2 text-xs text-black transition-transform"
+              aria-hidden
+            />
+          </AccordionTrigger>
+          <AccordionContent className="bg-white px-3 py-3">
+            <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Test Instance Snapshot
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <SummaryPill
+                        label="Initial"
+                        value={
+                          issue.initialWeight == null
+                            ? "-"
+                            : `${issue.initialWeight.toFixed(3)} g`
+                        }
+                      />
+                      <SummaryPill
+                        label="Final"
+                        value={
+                          issue.finalWeight == null
+                            ? "-"
+                            : `${issue.finalWeight.toFixed(3)} g`
+                        }
+                      />
+                      <SummaryPill
+                        label="Sample"
+                        value={issue.sampleLabel ?? "Not set"}
+                      />
+                      <SummaryPill
+                        label="Moisture Loss"
+                        value={
+                          issue.moistureWeight == null
+                            ? "-"
+                            : `${issue.moistureWeight.toFixed(3)} g`
+                        }
+                      />
+                      <SummaryPill
+                        label="Moisture %"
+                        value={
+                          issue.moisturePct == null
+                            ? "-"
+                            : `${issue.moisturePct.toFixed(3)}%`
+                        }
+                      />
+                    </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <SummaryPill
-                    label="Sample"
-                    value={issue.sampleLabel ?? "Not set"}
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <PermissionPill
+                      label="Tester"
+                      active={canEditSlip}
+                      inactiveLabel="Read only"
+                    />
+                    <PermissionPill
+                      label="L1"
+                      active={canEditL1}
+                      inactiveLabel="Read only"
+                    />
+                    <PermissionPill
+                      label="L2"
+                      active={canEditL2}
+                      inactiveLabel="Read only"
+                    />
+                    <SoilMoistureEditorModal
+                      issue={issue}
+                      onUpdate={updateMoistureFields}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                  <ReviewCard
+                    title="Inspection L1"
+                    status={issue.levelOneStatus}
+                    note={issue.levelOneNote}
+                    editable={canEditL1}
                   />
-                  <SummaryPill
-                    label="Moisture Loss"
-                    value={
-                      issue.moistureWeight == null
-                        ? "-"
-                        : `${issue.moistureWeight.toFixed(3)} g`
-                    }
-                  />
-                  <SummaryPill
-                    label="Moisture %"
-                    value={
-                      issue.moisturePct == null
-                        ? "-"
-                        : `${issue.moisturePct.toFixed(3)}%`
-                    }
+                  <ReviewCard
+                    title="Inspection L2"
+                    status={issue.levelTwoStatus}
+                    note={issue.levelTwoNote}
+                    editable={canEditL2}
                   />
                 </div>
               </div>
-              <SoilMoistureEditorModal
-                issue={issue}
-                onUpdate={updateMoistureFields}
-              />
             </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <ReviewCard
-                title="Inspection L1"
-                status={issue.levelOneStatus}
-                note={issue.levelOneNote}
-              />
-              <ReviewCard
-                title="Inspection L2"
-                status={issue.levelTwoStatus}
-                note={issue.levelTwoNote}
-              />
-            </div>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
+          </AccordionContent>
+        </AccordionItem>
       ) : null}
     </Accordion>
   );
@@ -298,18 +344,48 @@ const ReviewCard: React.FC<{
   title: string;
   status: WorkflowReviewStatus;
   note: string | null;
-}> = ({ title, status, note }) => {
+  editable: boolean;
+}> = ({ title, status, note, editable }) => {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-x-3">
         <span className="text-sm font-semibold text-slate-800">{title}</span>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-          {status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={
+              editable
+                ? "rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700"
+                : "rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"
+            }
+          >
+            {editable ? "Editable" : "Read only"}
+          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+            {status}
+          </span>
+        </div>
       </div>
       <p className="mt-3 text-sm leading-6 text-slate-600">
         {note?.trim() || "No inspection note added yet."}
       </p>
+    </div>
+  );
+};
+
+const PermissionPill: React.FC<{
+  label: string;
+  active: boolean;
+  inactiveLabel: string;
+}> = ({ label, active, inactiveLabel }) => {
+  return (
+    <div
+      className={
+        active
+          ? "rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700"
+          : "rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600"
+      }
+    >
+      {label}: {active ? "Editable" : inactiveLabel}
     </div>
   );
 };

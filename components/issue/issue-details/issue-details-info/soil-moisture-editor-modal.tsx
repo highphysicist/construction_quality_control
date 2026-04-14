@@ -41,7 +41,10 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
   return (
     <Modal>
       <ModalTrigger asChild>
-        <Button className="flex items-center gap-x-2 bg-blue-600 text-white hover:bg-blue-700">
+        <Button
+          customColors
+          className="flex items-center gap-x-2 bg-blue-600 text-white hover:bg-blue-700"
+        >
           <FiEdit3 className="text-sm" />
           <span>Edit Soil Moisture Slip</span>
         </Button>

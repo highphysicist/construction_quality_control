@@ -41,18 +41,24 @@ export function canManageAssignee(actor: WorkflowActor, issue: IssueType) {
 export function canEditTesterFields(actor: WorkflowActor, issue: IssueType) {
   return (
     isSubtask(issue) &&
-    actor.role === "QUALITY_TESTER" &&
+    (actor.role === "ADMIN" || actor.role === "QUALITY_TESTER") &&
     !!actor.userId &&
     issue.assigneeId === actor.userId
   );
 }
 
 export function canEditLevelOneFields(actor: WorkflowActor, issue: IssueType) {
-  return isSubtask(issue) && actor.role === "QUALITY_INSPECTOR_L1";
+  return (
+    isSubtask(issue) &&
+    (actor.role === "ADMIN" || actor.role === "QUALITY_INSPECTOR_L1")
+  );
 }
 
 export function canEditLevelTwoFields(actor: WorkflowActor, issue: IssueType) {
-  return isSubtask(issue) && actor.role === "QUALITY_INSPECTOR_L2";
+  return (
+    isSubtask(issue) &&
+    (actor.role === "ADMIN" || actor.role === "QUALITY_INSPECTOR_L2")
+  );
 }
 
 export function canEditComputedFields() {
