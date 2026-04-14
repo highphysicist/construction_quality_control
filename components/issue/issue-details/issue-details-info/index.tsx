@@ -6,7 +6,6 @@ import { IssueSelectStatus } from "../../issue-select-status";
 import { useSelectedIssueContext } from "@/context/use-selected-issue-context";
 import { type IssueType } from "@/utils/types";
 import { Button } from "@/components/ui/button";
-import { Comments } from "./issue-details-info-comments";
 import { IssueMetaInfo } from "./issue-details-info-meta";
 import { Description } from "./issue-details-info-description";
 import { IssueDetailsInfoAccordion } from "./issue-details-info-accordion";
@@ -87,7 +86,7 @@ const SmallIssueDetailsInfo = React.forwardRef<
           </Button>
         </NotImplemented>
       </div>
-      <Description issue={issue} key={String(issueKey) + issue.id} />
+      <IssueDetailsInfoAccordion issue={issue} />
       {hasChildren(issue) || isAddingChildIssue ? (
         <ChildIssueList
           issues={issue.children}
@@ -97,9 +96,8 @@ const SmallIssueDetailsInfo = React.forwardRef<
           setIsAddingChildIssue={setIsAddingChildIssue}
         />
       ) : null}
-      <IssueDetailsInfoAccordion issue={issue} />
+      <Description issue={issue} key={String(issueKey) + issue.id} />
       <IssueMetaInfo issue={issue} />
-      <Comments issue={issue} />
     </Fragment>
   );
 });
@@ -117,7 +115,7 @@ const LargeIssueDetails = React.forwardRef<
 
   return (
     <Split
-      sizes={[60, 40]}
+      sizes={[68, 32]}
       gutterSize={2}
       className="flex max-h-[70vh] w-full overflow-hidden"
       minSize={300}
@@ -146,21 +144,7 @@ const LargeIssueDetails = React.forwardRef<
           onAddChildIssue={() => setIsAddingChildIssue(true)}
           variant={"lg"}
         />
-        <Description issue={issue} key={String(issueKey) + issue.id} />
-        {hasChildren(issue) || isAddingChildIssue ? (
-          <ChildIssueList
-            issues={issue.children}
-            parentIsEpic={isEpic(issue)}
-            parentId={issue.id}
-            isAddingChildIssue={isAddingChildIssue}
-            setIsAddingChildIssue={setIsAddingChildIssue}
-          />
-        ) : null}
-        <Comments issue={issue} />
-      </div>
-
-      <div className="mt-4 bg-white pl-3">
-        <div className="relative flex items-center gap-x-3">
+        <div className="relative mt-4 flex items-center gap-x-3">
           <IssueSelectStatus
             key={issue.id + issue.status}
             issue={issue}
@@ -175,8 +159,24 @@ const LargeIssueDetails = React.forwardRef<
             </Button>
           </NotImplemented>
         </div>
-
         <IssueDetailsInfoAccordion issue={issue} />
+        {hasChildren(issue) || isAddingChildIssue ? (
+          <ChildIssueList
+            issues={issue.children}
+            parentIsEpic={isEpic(issue)}
+            parentId={issue.id}
+            isAddingChildIssue={isAddingChildIssue}
+            setIsAddingChildIssue={setIsAddingChildIssue}
+          />
+        ) : null}
+        <Description issue={issue} key={String(issueKey) + issue.id} />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+          Record Notes
+        </div>
+        <Description issue={issue} key={`${String(issueKey)}-${issue.id}-sidebar`} />
         <IssueMetaInfo issue={issue} />
       </div>
     </Split>

@@ -27,11 +27,15 @@ const REVIEW_OPTIONS: WorkflowReviewStatus[] = ["PENDING", "OK", "NOT_OK"];
 type SoilMoistureEditorModalProps = {
   issue: IssueType;
   onUpdate: (payload: Omit<PatchIssueBody, "issueId">) => void;
+  triggerClassName?: string;
+  triggerLabel?: string;
 };
 
 const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
   issue,
   onUpdate,
+  triggerClassName,
+  triggerLabel,
 }) => {
   const actor = useCurrentWorkflowActor();
   const canEditTester = canEditTesterFields(actor, issue);
@@ -43,10 +47,13 @@ const SoilMoistureEditorModal: React.FC<SoilMoistureEditorModalProps> = ({
       <ModalTrigger asChild>
         <Button
           customColors
-          className="flex items-center gap-x-2 bg-blue-600 text-white hover:bg-blue-700"
+          className={
+            triggerClassName ??
+            "flex items-center gap-x-2 bg-blue-600 text-white hover:bg-blue-700"
+          }
         >
           <FiEdit3 className="text-sm" />
-          <span>Edit Soil Moisture Slip</span>
+          <span>{triggerLabel ?? "Edit Soil Moisture Slip"}</span>
         </Button>
       </ModalTrigger>
       <ModalPortal>

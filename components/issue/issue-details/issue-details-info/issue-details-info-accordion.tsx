@@ -25,6 +25,7 @@ import {
   canEditTesterFields,
   canManageAssignee,
 } from "@/utils/workflow";
+import { dateToLongString } from "@/utils/helpers";
 
 const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   issue,
@@ -236,85 +237,87 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
           <AccordionContent className="bg-white px-3 py-3">
             <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
               <div className="flex flex-col gap-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Test Instance Snapshot
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <SummaryPill
-                        label="Initial"
-                        value={
-                          issue.initialWeight == null
-                            ? "-"
-                            : `${issue.initialWeight.toFixed(3)} g`
-                        }
-                      />
-                      <SummaryPill
-                        label="Final"
-                        value={
-                          issue.finalWeight == null
-                            ? "-"
-                            : `${issue.finalWeight.toFixed(3)} g`
-                        }
-                      />
-                      <SummaryPill
-                        label="Sample"
-                        value={issue.sampleLabel ?? "Not set"}
-                      />
-                      <SummaryPill
-                        label="Moisture Loss"
-                        value={
-                          issue.moistureWeight == null
-                            ? "-"
-                            : `${issue.moistureWeight.toFixed(3)} g`
-                        }
-                      />
-                      <SummaryPill
-                        label="Moisture %"
-                        value={
-                          issue.moisturePct == null
-                            ? "-"
-                            : `${issue.moisturePct.toFixed(3)}%`
-                        }
-                      />
-                    </div>
-                </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <PermissionPill
-                      label="Tester"
-                      active={canEditSlip}
-                      inactiveLabel="Read only"
-                    />
-                    <PermissionPill
-                      label="L1"
-                      active={canEditL1}
-                      inactiveLabel="Read only"
-                    />
-                    <PermissionPill
-                      label="L2"
-                      active={canEditL2}
-                      inactiveLabel="Read only"
-                    />
-                    <SoilMoistureEditorModal
-                      issue={issue}
-                      onUpdate={updateMoistureFields}
-                    />
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Test Slip Summary
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Enter tester weights and approval decisions in the dedicated slip editor. Computed fields remain read only.
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 xl:grid-cols-2">
+                <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2">
+                  <SummaryRow
+                    label="Sample ID"
+                    value={issue.sampleLabel?.trim() || "Not set"}
+                  />
+                  <SummaryRow
+                    label="Initial Weight"
+                    value={
+                      issue.initialWeight == null
+                        ? "Not recorded"
+                        : `${issue.initialWeight.toFixed(3)} g`
+                    }
+                  />
+                  <SummaryRow
+                    label="Final Weight"
+                    value={
+                      issue.finalWeight == null
+                        ? "Not recorded"
+                        : `${issue.finalWeight.toFixed(3)} g`
+                    }
+                  />
+                  <SummaryRow
+                    label="Moisture Loss"
+                    value={
+                      issue.moistureWeight == null
+                        ? "Calculated after weights are entered"
+                        : `${issue.moistureWeight.toFixed(3)} g`
+                    }
+                  />
+                  <SummaryRow
+                    label="Moisture %"
+                    value={
+                      issue.moisturePct == null
+                        ? "Calculated after weights are entered"
+                        : `${issue.moisturePct.toFixed(3)}%`
+                    }
+                  />
+                  <SummaryRow
+                    label="Slip Recorded"
+                    value={
+                      issue.testerRecordedAt
+                        ? dateToLongString(issue.testerRecordedAt)
+                        : "Not recorded"
+                    }
+                  />
+                </div>
+
+                <SoilMoistureEditorModal
+                  issue={issue}
+                  onUpdate={updateMoistureFields}
+                  triggerLabel={
+                    canEditSlip || canEditL1 || canEditL2
+                      ? "Open Soil Moisture Slip Editor"
+                      : "View Soil Moisture Slip"
+                  }
+                  triggerClassName="w-full justify-center rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+                />
+
+                <div className="grid gap-3">
                   <ReviewCard
                     title="Inspection L1"
                     status={issue.levelOneStatus}
                     note={issue.levelOneNote}
                     editable={canEditL1}
+                    helperText="L1 records acceptance or rejection with comments and signature timestamp."
                   />
                   <ReviewCard
                     title="Inspection L2"
                     status={issue.levelTwoStatus}
                     note={issue.levelTwoNote}
                     editable={canEditL2}
+                    helperText="L2 provides the final approval decision and closing comment."
                   />
                 </div>
               </div>
@@ -326,16 +329,16 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   );
 };
 
-const SummaryPill: React.FC<{ label: string; value: string }> = ({
+const SummaryRow: React.FC<{ label: string; value: string }> = ({
   label,
   value,
 }) => {
   return (
-    <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-      <span className="mr-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
         {label}
-      </span>
-      <span className="font-medium text-slate-800">{value}</span>
+      </div>
+      <div className="mt-1 text-sm font-medium text-slate-800">{value}</div>
     </div>
   );
 };
@@ -345,12 +348,16 @@ const ReviewCard: React.FC<{
   status: WorkflowReviewStatus;
   note: string | null;
   editable: boolean;
-}> = ({ title, status, note, editable }) => {
+  helperText: string;
+}> = ({ title, status, note, editable, helperText }) => {
   return (
     <div className="min-w-0 rounded-lg border border-slate-200 bg-white p-4">
-      <div className="flex items-center justify-between gap-x-3">
-        <span className="text-sm font-semibold text-slate-800">{title}</span>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-slate-800">{title}</div>
+          <div className="mt-1 text-xs text-slate-500">{helperText}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <span
             className={
               editable
@@ -368,24 +375,6 @@ const ReviewCard: React.FC<{
       <p className="mt-3 text-sm leading-6 text-slate-600">
         {note?.trim() || "No inspection note added yet."}
       </p>
-    </div>
-  );
-};
-
-const PermissionPill: React.FC<{
-  label: string;
-  active: boolean;
-  inactiveLabel: string;
-}> = ({ label, active, inactiveLabel }) => {
-  return (
-    <div
-      className={
-        active
-          ? "rounded-full bg-emerald-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700"
-          : "rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-600"
-      }
-    >
-      {label}: {active ? "Editable" : inactiveLabel}
     </div>
   );
 };
