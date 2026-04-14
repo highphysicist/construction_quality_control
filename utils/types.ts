@@ -4,6 +4,7 @@ export type IssueCountType = {
   TODO: number;
   IN_PROGRESS: number;
   INSPECTION: number;
+  INSPECTION_L2: number;
   DONE: number;
 };
 

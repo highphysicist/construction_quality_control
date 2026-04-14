@@ -1,7 +1,11 @@
 import { prisma, ratelimit } from "@/server/db";
 import { getAuth } from "@clerk/nextjs/server";
-import { SprintStatus, type Sprint } from "@prisma/client";
+import { type Sprint } from "@prisma/client";
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  ensureAuthenticatedAdminUser,
+  getInitialSprintsFromServer,
+} from "@/server/functions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +22,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return new Response("Unauthenticated request", { status: 403 });
   const { success } = await ratelimit.limit(userId);
   if (!success) return new Response("Too many requests", { status: 429 });
+  await ensureAuthenticatedAdminUser(userId);
 
   const sprints = await prisma.sprint.findMany({
     where: {
@@ -40,15 +45,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const { userId } = getAuth(req);
-  const sprints = await prisma.sprint.findMany({
-    where: {
-      OR: [{ status: SprintStatus.ACTIVE }, { status: SprintStatus.PENDING }],
-      creatorId: userId ?? "init",
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
+  const sprints = await getInitialSprintsFromServer(userId ?? undefined);
 
   // return NextResponse.json<GetSprintsResponse>({ sprints });
   return NextResponse.json({ sprints });

@@ -40,9 +40,11 @@ const IssueList: React.FC<{ sprintId: string | null; issues: IssueType[] }> = ({
   function handleCreateIssue({
     name,
     type,
+    requestedCount,
   }: {
     name: string;
     type: IssueType["type"];
+    requestedCount?: number | null;
   }) {
     if (!isAuthenticated) {
       openAuthModal();
@@ -60,6 +62,7 @@ const IssueList: React.FC<{ sprintId: string | null; issues: IssueType[] }> = ({
         parentId: null,
         sprintId,
         reporterId: user?.id ?? null,
+        requestedCount: type === "TASK" ? requestedCount ?? 1 : null,
       },
       {
         onSuccess: () => {
@@ -103,7 +106,9 @@ const IssueList: React.FC<{ sprintId: string | null; issues: IssueType[] }> = ({
       <EmtpyIssue
         data-state={isEditing ? "open" : "closed"}
         className="[&[data-state=closed]]:hidden"
-        onCreate={({ name, type }) => handleCreateIssue({ name, type })}
+        onCreate={({ name, type, requestedCount }) =>
+          handleCreateIssue({ name, type, requestedCount })
+        }
         onCancel={() => setIsEditing(false)}
         isCreating={isCreating}
       />
@@ -201,7 +206,7 @@ const ChildIssueRow: React.FC<{
         ) : null}
       </div>
       <div className="flex items-center gap-x-2">
-        <IssueSelectStatus currentStatus={issue.status} issueId={issue.id} />
+        <IssueSelectStatus issue={issue} />
         <IssueAssigneeSelect issue={issue} avatarOnly />
       </div>
     </div>

@@ -24,6 +24,7 @@ const IssueStatusCount: React.FC<{ issues: IssueType[] }> = ({ issues }) => {
             status == "TODO" && "bg-todo text-black",
             status == "IN_PROGRESS" && "bg-inprogress text-white",
             status == "INSPECTION" && "bg-amber-600 text-white",
+            status == "INSPECTION_L2" && "bg-orange-800 text-white",
             status == "DONE" && "bg-done text-white"
           )}
         />

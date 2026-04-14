@@ -27,8 +27,10 @@ import { useSprints } from "@/hooks/query-hooks/use-sprints";
 import { useProject } from "@/hooks/query-hooks/use-project";
 import { useFiltersContext } from "@/context/use-filters-context";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
+import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
+import { BOARD_STATUSES, canTransitionStatus } from "@/utils/workflow";
 
-const STATUSES: IssueStatus[] = ["TODO", "IN_PROGRESS", "INSPECTION", "DONE"];
+const STATUSES: IssueStatus[] = BOARD_STATUSES;
 
 const Board: React.FC = () => {
   const renderContainerRef = useRef<HTMLDivElement>(null);
@@ -72,6 +74,7 @@ const Board: React.FC = () => {
 
   const { updateIssue } = useIssues();
   const [isAuthenticated, openAuthModal] = useIsAuthenticated();
+  const actor = useCurrentWorkflowActor();
 
   useLayoutEffect(() => {
     if (!renderContainerRef.current) return;
@@ -95,6 +98,13 @@ const Board: React.FC = () => {
     const { destination, source } = result;
     if (isNullish(destination) || isNullish(source)) return;
 
+    const issue = issues.find((activeIssue) => activeIssue.id === result.draggableId);
+    if (!issue) return;
+
+    if (!canTransitionStatus(actor, issue, destination.droppableId as IssueStatus)) {
+      return;
+    }
+
     updateIssue({
       issueId: result.draggableId,
       status: destination.droppableId as IssueStatus,
@@ -114,7 +124,7 @@ const Board: React.FC = () => {
       <DragDropContext onDragEnd={onDragEnd}>
         <div
           ref={renderContainerRef}
-          className="relative flex w-full max-w-full gap-x-4 overflow-y-auto"
+          className="animate-fade-up relative flex w-full max-w-full gap-x-4 overflow-y-auto"
         >
           {STATUSES.map((status) => (
             <IssueList

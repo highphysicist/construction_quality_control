@@ -1,0 +1,8 @@
+ALTER TYPE "IssueStatus" ADD VALUE IF NOT EXISTS 'INSPECTION_L2';
+
+ALTER TABLE "Issue"
+ADD COLUMN "testerRecordedAt" TIMESTAMP(3),
+ADD COLUMN "levelOneSignedById" TEXT,
+ADD COLUMN "levelOneSignedAt" TIMESTAMP(3),
+ADD COLUMN "levelTwoSignedById" TEXT,
+ADD COLUMN "levelTwoSignedAt" TIMESTAMP(3);

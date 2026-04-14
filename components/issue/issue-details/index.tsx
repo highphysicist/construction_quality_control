@@ -35,7 +35,7 @@ const IssueDetails: React.FC<{
     <div
       ref={renderContainerRef}
       data-state={issueKey ? "open" : "closed"}
-      className="relative z-10 flex w-full flex-col overflow-y-auto pl-4 pr-2 [&[data-state=closed]]:hidden"
+      className="animate-soft-in relative z-10 flex w-full flex-col overflow-y-auto pl-4 pr-2 [&[data-state=closed]]:hidden"
     >
       <IssueDetailsHeader
         issue={issueInfo}

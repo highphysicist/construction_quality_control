@@ -13,11 +13,13 @@ import { z } from "zod";
 import { getAuth } from "@clerk/nextjs/server";
 import {
   calculateInsertPosition,
-  filterUserForClient,
-  generateIssuesForClient,
 } from "@/utils/helpers";
-import { clerkClient } from "@clerk/nextjs";
 import { DEMO_ADMIN_ID } from "@/prisma/seed-data";
+import { canCreateTest } from "@/utils/workflow";
+import {
+  ensureAuthenticatedAdminUser,
+  getInitialIssuesFromServer,
+} from "@/server/functions";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ const postIssuesBodyValidator = z.object({
   type: z.enum(["BUG", "STORY", "TASK", "EPIC", "SUBTASK"]),
   sprintId: z.string().nullable(),
   reporterId: z.string().nullable(),
+  assigneeId: z.string().nullable().optional(),
   parentId: z.string().nullable(),
   sprintColor: z.string().nullable().optional(),
   workflowType: z.nativeEnum(WorkflowType).optional(),
@@ -77,6 +80,17 @@ export type GetIssuesResponse = {
   issues: IssueT[];
 };
 
+function isParentTest(input: {
+  type?: IssueType;
+  parentId?: string | null;
+}) {
+  return input.type === "TASK" && !input.parentId;
+}
+
+function buildTestInstanceName(parentName: string, instanceNumber: number) {
+  return `${parentName} - Test Instance ${instanceNumber}`;
+}
+
 function calculateMoisture(
   initialWeight: number | null | undefined,
   finalWeight: number | null | undefined
@@ -107,63 +121,8 @@ function normalizeExtraFields(
 
 export async function GET(req: NextRequest) {
   const { userId } = getAuth(req);
-
-  const activeIssues = await prisma.issue.findMany({
-    where: {
-      creatorId: userId ?? "init",
-      isDeleted: false,
-    },
-  });
-
-  if (!activeIssues || activeIssues.length === 0) {
-    return NextResponse.json({ issues: [] });
-  }
-
-  const activeSprints = await prisma.sprint.findMany({
-    where: {
-      status: "ACTIVE",
-    },
-  });
-
-  const userIds = activeIssues
-    .flatMap((issue) => [issue.assigneeId, issue.reporterId] as string[])
-    .filter(Boolean);
-
-  const dbUsers = await prisma.defaultUser.findMany({
-    where: {
-      id: {
-        in: userIds,
-      },
-    },
-  });
-
-  let clerkUsers: Awaited<ReturnType<typeof clerkClient.users.getUserList>> = [];
-  if (userIds.length > 0) {
-    try {
-      clerkUsers = await clerkClient.users.getUserList({
-        userId: userIds,
-        limit: 10,
-      });
-    } catch {
-      clerkUsers = [];
-    }
-  }
-
-  const users = [
-    ...dbUsers,
-    ...clerkUsers.map(filterUserForClient).filter((clerkUser) => {
-      return !dbUsers.some((dbUser) => dbUser.id === clerkUser.id);
-    }),
-  ];
-
-  const issuesForClient = generateIssuesForClient(
-    activeIssues,
-    users,
-    activeSprints.map((sprint) => sprint.id)
-  );
-
-  // const issuesForClient = await getIssuesFromServer();
-  return NextResponse.json({ issues: issuesForClient });
+  const issues = await getInitialIssuesFromServer(userId);
+  return NextResponse.json({ issues });
 }
 
 // POST
@@ -185,6 +144,21 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: valid } = validated;
+  await ensureAuthenticatedAdminUser(userId);
+  const actor = await prisma.defaultUser.findUnique({
+    where: {
+      id: userId,
+    },
+  });
+
+  if (valid.type === "TASK" && !valid.parentId && !canCreateTest({
+    userId,
+    role: actor?.role ?? null,
+  })) {
+    return new Response("Only the RFI creator can create new tests", {
+      status: 403,
+    });
+  }
 
   const issues = await prisma.issue.findMany({
     where: {
@@ -215,35 +189,106 @@ export async function POST(req: NextRequest) {
   const k = issues.length + 1;
 
   const positionToInsert = calculateInsertPosition(currentSprintIssues);
-  const metrics = calculateMoisture(valid.initialWeight, valid.finalWeight);
+  const parentIssue = valid.parentId
+    ? await prisma.issue.findUnique({
+        where: {
+          id: valid.parentId,
+        },
+      })
+    : null;
 
-  const issue = await prisma.issue.create({
-    data: {
-      key: `ISSUE-${k}`,
-      name: valid.name,
-      type: valid.type,
-        reporterId: valid.reporterId ?? DEMO_ADMIN_ID,
-      sprintId: valid.sprintId ?? undefined,
-      sprintPosition: positionToInsert,
-      boardPosition,
-      parentId: valid.parentId,
-      sprintColor: valid.sprintColor,
-      workflowType: valid.workflowType,
-      requestedCount: valid.requestedCount,
-      chainage: valid.chainage,
-      truckDetails: valid.truckDetails,
-      sampleLabel: valid.sampleLabel,
-      initialWeight: valid.initialWeight,
-      finalWeight: valid.finalWeight,
-      moistureWeight: metrics.moistureWeight,
-      moisturePct: metrics.moisturePct,
-      levelOneStatus: valid.levelOneStatus,
-      levelOneNote: valid.levelOneNote,
-      levelTwoStatus: valid.levelTwoStatus,
-      levelTwoNote: valid.levelTwoNote,
-      extraFields: normalizeExtraFields(valid.extraFields),
-      creatorId: userId,
-    },
+  const effectiveSprintId =
+    valid.parentId && parentIssue ? parentIssue.sprintId : valid.sprintId;
+  const effectiveAssigneeId =
+    valid.assigneeId !== undefined
+      ? valid.assigneeId
+      : parentIssue?.assigneeId ?? null;
+  const isTopLevelTest = isParentTest({
+    type: valid.type,
+    parentId: valid.parentId,
+  });
+  const isTestInstance = valid.type === "SUBTASK";
+  const metrics = calculateMoisture(
+    isTestInstance ? valid.initialWeight : null,
+    isTestInstance ? valid.finalWeight : null
+  );
+
+  const issue = await prisma.$transaction(async (tx) => {
+    const createdIssue = await tx.issue.create({
+      data: {
+        key: `ISSUE-${k}`,
+        name: valid.name,
+        type: valid.type,
+        reporterId: valid.reporterId ?? parentIssue?.reporterId ?? DEMO_ADMIN_ID,
+        assigneeId: effectiveAssigneeId,
+        sprintId: effectiveSprintId ?? undefined,
+        sprintPosition: positionToInsert,
+        boardPosition,
+        parentId: valid.parentId,
+        sprintColor: valid.sprintColor,
+        workflowType: valid.workflowType ?? parentIssue?.workflowType,
+        requestedCount: isTopLevelTest ? valid.requestedCount ?? 0 : null,
+        chainage: isTopLevelTest ? valid.chainage ?? null : null,
+        truckDetails: isTopLevelTest ? valid.truckDetails ?? null : null,
+        sampleLabel: isTestInstance ? valid.sampleLabel ?? null : null,
+        initialWeight: isTestInstance ? valid.initialWeight ?? null : null,
+        finalWeight: isTestInstance ? valid.finalWeight ?? null : null,
+        moistureWeight: isTestInstance ? metrics.moistureWeight : null,
+        moisturePct: isTestInstance ? metrics.moisturePct : null,
+        levelOneStatus: isTestInstance
+          ? valid.levelOneStatus
+          : WorkflowReviewStatus.PENDING,
+        levelOneNote: isTestInstance ? valid.levelOneNote ?? null : null,
+        levelTwoStatus: isTestInstance
+          ? valid.levelTwoStatus
+          : WorkflowReviewStatus.PENDING,
+        levelTwoNote: isTestInstance ? valid.levelTwoNote ?? null : null,
+        extraFields: normalizeExtraFields(valid.extraFields),
+        creatorId: userId,
+      },
+    });
+
+    if (isTopLevelTest && (valid.requestedCount ?? 0) > 0) {
+      const childCount = valid.requestedCount ?? 0;
+      await Promise.all(
+        Array.from({ length: childCount }, (_, index) => {
+          const childNumber = index + 1;
+          return tx.issue.create({
+            data: {
+              key: `ISSUE-${k + childNumber}`,
+              name: buildTestInstanceName(valid.name, childNumber),
+              type: "SUBTASK",
+              reporterId:
+                valid.reporterId ?? parentIssue?.reporterId ?? DEMO_ADMIN_ID,
+              assigneeId: effectiveAssigneeId,
+              sprintId: effectiveSprintId ?? undefined,
+              sprintPosition: positionToInsert + childNumber / 10,
+              boardPosition:
+                boardPosition < 0 ? -1 : boardPosition + childNumber / 10,
+              parentId: createdIssue.id,
+              workflowType:
+                valid.workflowType ?? parentIssue?.workflowType ?? undefined,
+              requestedCount: null,
+              chainage: null,
+              truckDetails: null,
+              sampleLabel: `Instance ${childNumber}`,
+              initialWeight: null,
+              finalWeight: null,
+              moistureWeight: null,
+              moisturePct: null,
+              levelOneStatus: WorkflowReviewStatus.PENDING,
+              levelOneNote: null,
+              levelTwoStatus: WorkflowReviewStatus.PENDING,
+              levelTwoNote: null,
+              extraFields: Prisma.JsonNull,
+              creatorId: userId,
+            },
+          });
+        })
+      );
+    }
+
+    return createdIssue;
   });
   // return NextResponse.json<PostIssueResponse>({ issue });
   return NextResponse.json({ issue });
@@ -254,6 +299,7 @@ export async function PATCH(req: NextRequest) {
   if (!userId) return new Response("Unauthenticated request", { status: 403 });
   const { success } = await ratelimit.limit(userId);
   if (!success) return new Response("Too many requests", { status: 429 });
+  await ensureAuthenticatedAdminUser(userId);
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const body = await req.json();

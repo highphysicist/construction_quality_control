@@ -236,8 +236,7 @@ const EpicsAccordion: React.FC<{
                   <div className="flex items-center gap-x-2 pr-2">
                     <IssueSelectStatus
                       key={child.key + child.status}
-                      currentStatus={child.status}
-                      issueId={child.id}
+                      issue={child}
                     />
                     <IssueAssigneeSelect
                       issue={child}

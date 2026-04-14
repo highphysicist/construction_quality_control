@@ -7,6 +7,11 @@ export const DEMO_MANAGER_ID = "demo_quality_manager";
 export const DEMO_TESTER_ID = "demo_quality_tester";
 export const DEMO_INSPECTOR_L1_ID = "demo_quality_inspector_l1";
 export const DEMO_INSPECTOR_L2_ID = "demo_quality_inspector_l2";
+export const LEGACY_DEMO_USER_IDS = [
+  "user_2PwZmH2xP5aE0svR6hDH4AwDlcu",
+  "user_2PwYvTgm6kvgJIbWwN0xsei8izu",
+  "user_2PvBRngdvenUlFvQNAWbXIvYVy5",
+] as const;
 
 const legacyIssueNames = [
   "Issue descriptions can contain code snippets",
@@ -22,41 +27,42 @@ export function isLegacyDemoIssue(name: string) {
 export const defaultUsers = [
   {
     id: DEMO_ADMIN_ID,
-    name: "Admin",
+    name: "AD",
     email: "admin@construction-qc.demo",
-    avatar: "https://ui-avatars.com/api/?name=Admin&background=0f766e&color=fff",
+    avatar:
+      "https://images.clerk.dev/uploaded/img_2PwZslOi493tjduHiBADgDxhHlg.png",
     role: "ADMIN",
   },
   {
     id: DEMO_MANAGER_ID,
-    name: "Quality Manager",
+    name: "QM",
     email: "quality.manager@construction-qc.demo",
     avatar:
-      "https://ui-avatars.com/api/?name=Quality+Manager&background=1d4ed8&color=fff",
+      "https://images.clerk.dev/uploaded/img_2PwjGSsR9nGqEhAyt5nydgXhBI1.webp",
     role: "QUALITY_MANAGER",
   },
   {
     id: DEMO_TESTER_ID,
-    name: "Quality Tester",
+    name: "QT",
     email: "quality.tester@construction-qc.demo",
     avatar:
-      "https://ui-avatars.com/api/?name=Quality+Tester&background=ca8a04&color=fff",
+      "https://images.clerk.dev/uploaded/img_2Pwinee7Eg6qoSgqailCZSJt3uS.webp",
     role: "QUALITY_TESTER",
   },
   {
     id: DEMO_INSPECTOR_L1_ID,
-    name: "Quality Inspector L1",
+    name: "QI1",
     email: "quality.inspector.l1@construction-qc.demo",
     avatar:
-      "https://ui-avatars.com/api/?name=Inspector+L1&background=9333ea&color=fff",
+      "https://images.clerk.dev/uploaded/img_2PwjGSsR9nGqEhAyt5nydgXhBI1.webp",
     role: "QUALITY_INSPECTOR_L1",
   },
   {
     id: DEMO_INSPECTOR_L2_ID,
-    name: "Quality Inspector L2",
+    name: "QI2",
     email: "quality.inspector.l2@construction-qc.demo",
     avatar:
-      "https://ui-avatars.com/api/?name=Inspector+L2&background=dc2626&color=fff",
+      "https://images.clerk.dev/uploaded/img_2Pwinee7Eg6qoSgqailCZSJt3uS.webp",
     role: "QUALITY_INSPECTOR_L2",
   },
 ] as const;

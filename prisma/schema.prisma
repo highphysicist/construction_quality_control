@@ -43,6 +43,7 @@ enum IssueStatus {
     TODO
     IN_PROGRESS
     INSPECTION
+    INSPECTION_L2
     DONE
 }
 
@@ -91,12 +92,17 @@ model Issue {
     sampleLabel    String?
     initialWeight  Float?
     finalWeight    Float?
+    testerRecordedAt DateTime?
     moistureWeight Float?
     moisturePct    Float?
     levelOneStatus WorkflowReviewStatus @default(PENDING)
     levelOneNote   String?     @db.Text()
+    levelOneSignedById String?
+    levelOneSignedAt DateTime?
     levelTwoStatus WorkflowReviewStatus @default(PENDING)
     levelTwoNote   String?     @db.Text()
+    levelTwoSignedById String?
+    levelTwoSignedAt DateTime?
     extraFields    Json?
     creatorId      String
     comments       Comment[]

@@ -26,7 +26,7 @@ const Backlog: React.FC = () => {
   return (
     <Fragment>
       <BacklogHeader project={project} />
-      <div ref={renderContainerRef} className="min-w-full max-w-max">
+      <div ref={renderContainerRef} className="animate-fade-up min-w-full max-w-max">
         <Split
           sizes={issueKey ? [60, 40] : [100, 0]}
           gutterSize={issueKey ? 2 : 0}

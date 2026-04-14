@@ -9,9 +9,59 @@ import {
   generateInitialUserIssues,
   generateInitialUserSprints,
   isLegacyDemoIssue,
+  LEGACY_DEMO_USER_IDS,
 } from "../prisma/seed-data";
 import { prisma } from "./db";
 import { SprintStatus } from "@prisma/client";
+
+export async function ensureAuthenticatedAdminUser(
+  userId: string | null | undefined
+) {
+  if (!userId) return null;
+
+  await ensureProjectExists();
+
+  const existingUser = await prisma.defaultUser.findUnique({
+    where: { id: userId },
+  });
+
+  if (existingUser?.role === "ADMIN") {
+    await prisma.member.upsert({
+      where: { id: userId },
+      update: { projectId: DEMO_PROJECT_ID },
+      create: { id: userId, projectId: DEMO_PROJECT_ID },
+    });
+    return existingUser;
+  }
+
+  const clerkUser = await clerkClient.users.getUser(userId);
+  const clientUser = filterUserForClient(clerkUser);
+
+  const syncedUser = await prisma.defaultUser.upsert({
+    where: { id: userId },
+    update: {
+      name: clientUser.name.trim() || clientUser.email,
+      email: clientUser.email,
+      avatar: clientUser.avatar,
+      role: "ADMIN",
+    },
+    create: {
+      id: userId,
+      name: clientUser.name.trim() || clientUser.email,
+      email: clientUser.email,
+      avatar: clientUser.avatar,
+      role: "ADMIN",
+    },
+  });
+
+  await prisma.member.upsert({
+    where: { id: userId },
+    update: { projectId: DEMO_PROJECT_ID },
+    create: { id: userId, projectId: DEMO_PROJECT_ID },
+  });
+
+  return syncedUser;
+}
 
 async function ensureProjectExists() {
   const existingProject = await prisma.project.findUnique({
@@ -51,7 +101,7 @@ async function ensureUserWorkspace(userId: string) {
   });
 
   const hasLegacyWorkspace = existingIssues.some((issue) =>
-    isLegacyDemoIssue(issue.name)
+    isLegacyDemoIssue(issue.name) || issue.type === "BUG" || issue.type === "STORY"
   );
 
   if (hasLegacyWorkspace) {
@@ -90,6 +140,7 @@ export async function getInitialIssuesFromServer(
   await ensureProjectExists();
 
   if (userId) {
+    await ensureAuthenticatedAdminUser(userId);
     await ensureUserWorkspace(userId);
   }
 
@@ -156,6 +207,7 @@ export async function getInitialSprintsFromServer(
   await ensureProjectExists();
 
   if (userId) {
+    await ensureAuthenticatedAdminUser(userId);
     await ensureUserWorkspace(userId);
   }
 
@@ -189,6 +241,13 @@ export async function initProject() {
   });
 }
 export async function initDefaultUsers() {
+  await prisma.defaultUser.deleteMany({
+    where: {
+      id: {
+        in: [...LEGACY_DEMO_USER_IDS],
+      },
+    },
+  });
   await Promise.all(
     defaultUsers.map(
       async (user) =>
@@ -214,6 +273,13 @@ export async function initDefaultUsers() {
   );
 }
 export async function initDefaultProjectMembers() {
+  await prisma.member.deleteMany({
+    where: {
+      id: {
+        in: [...LEGACY_DEMO_USER_IDS],
+      },
+    },
+  });
   await Promise.all(
     defaultUsers.map(
       async (user) =>

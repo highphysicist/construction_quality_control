@@ -46,7 +46,7 @@ const Issue: React.FC<{
             isDragging
               ? "border-[0.3px] border-gray-300 bg-blue-100"
               : "bg-white",
-            "group flex w-full max-w-full items-center justify-between  px-3 py-1.5 text-sm hover:bg-gray-50 [&[data-state=selected]]:bg-blue-100"
+            "surface-motion group flex w-full max-w-full items-center justify-between px-3 py-1.5 text-sm hover:bg-gray-50 hover:shadow-sm [&[data-state=selected]]:bg-blue-100"
           )}
         >
           <div
@@ -101,8 +101,7 @@ const Issue: React.FC<{
             ) : null}
             <IssueSelectStatus
               key={issue.id + issue.status}
-              currentStatus={issue.status}
-              issueId={issue.id}
+              issue={issue}
             />
             <IssueAssigneeSelect issue={issue} avatarOnly />
             <IssueDropdownMenu issue={issue}>

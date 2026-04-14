@@ -14,6 +14,7 @@ const EmtpyIssue: React.FC<{
     name: string;
     type: IssueType["type"];
     parentId: IssueType["id"] | null;
+    requestedCount?: number | null;
   }) => void;
   onCancel: () => void;
   isCreating: boolean;
@@ -32,6 +33,7 @@ const EmtpyIssue: React.FC<{
 }) => {
   const [name, setName] = useState("");
   const [type, setType] = useState<IssueType["type"]>(() => initialType());
+  const [requestedCount, setRequestedCount] = useState<number>(1);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function initialType() {
@@ -61,7 +63,12 @@ const EmtpyIssue: React.FC<{
         return;
       }
 
-      onCreate({ name, type, parentId: parentId ?? null });
+      onCreate({
+        name,
+        type,
+        parentId: parentId ?? null,
+        requestedCount: isSubtask ? null : requestedCount,
+      });
       setName("");
     }
   }
@@ -99,6 +106,16 @@ const EmtpyIssue: React.FC<{
         onChange={(e) => setName(e.currentTarget.value)}
         onKeyDown={handleCreateIssue}
       />
+      {!isSubtask && !isEpic ? (
+        <input
+          type="number"
+          min={1}
+          value={requestedCount}
+          onChange={(e) => setRequestedCount(Number(e.currentTarget.value) || 1)}
+          className="w-20 rounded border px-2 py-1 text-sm"
+          aria-label="Number of required test instances"
+        />
+      ) : null}
       {isCreating ? (
         <div className="absolute right-2 z-10">
           <Spinner size="sm" />
@@ -118,6 +135,7 @@ const EmtpyIssue: React.FC<{
                 name,
                 type,
                 parentId: parentId ?? null,
+                requestedCount: isSubtask ? null : requestedCount,
               })
             }
           >

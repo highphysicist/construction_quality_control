@@ -75,8 +75,7 @@ const SmallIssueDetailsInfo = React.forwardRef<
       <div className="relative flex items-center gap-x-3">
         <IssueSelectStatus
           key={issue.id + issue.status}
-          currentStatus={issue.status}
-          issueId={issue.id}
+          issue={issue}
           variant="lg"
         />
         <NotImplemented>
@@ -164,8 +163,7 @@ const LargeIssueDetails = React.forwardRef<
         <div className="relative flex items-center gap-x-3">
           <IssueSelectStatus
             key={issue.id + issue.status}
-            currentStatus={issue.status}
-            issueId={issue.id}
+            issue={issue}
             variant="lg"
           />
           <NotImplemented>

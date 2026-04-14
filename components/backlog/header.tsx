@@ -16,6 +16,8 @@ import { EmtpyIssue } from "../issue/issue-empty";
 import { useIssues } from "@/hooks/query-hooks/use-issues";
 import { useUser } from "@clerk/clerk-react";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
+import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
+import { canCreateTest } from "@/utils/workflow";
 
 const BacklogHeader: React.FC<{ project: Project }> = ({ project }) => {
   const { search, setSearch } = useFiltersContext();
@@ -23,8 +25,10 @@ const BacklogHeader: React.FC<{ project: Project }> = ({ project }) => {
   const { user } = useUser();
   const [isCreatingTest, setIsCreatingTest] = useState(false);
   const [isAuthenticated, openAuthModal] = useIsAuthenticated();
+  const actor = useCurrentWorkflowActor();
+  const canCreate = canCreateTest(actor);
 
-  function handleCreateTest(name: string) {
+  function handleCreateTest(name: string, requestedCount?: number | null) {
     if (!isAuthenticated) {
       openAuthModal();
       return;
@@ -39,6 +43,7 @@ const BacklogHeader: React.FC<{ project: Project }> = ({ project }) => {
         parentId: null,
         sprintId: null,
         reporterId: user?.id ?? null,
+        requestedCount: requestedCount ?? 1,
       },
       {
         onSuccess: () => setIsCreatingTest(false),
@@ -54,6 +59,7 @@ const BacklogHeader: React.FC<{ project: Project }> = ({ project }) => {
         <Button
           onClick={() => setIsCreatingTest(true)}
           data-state={isCreatingTest ? "closed" : "open"}
+          disabled={!canCreate}
           className="flex items-center gap-x-2 [&[data-state=closed]]:hidden"
         >
           <AiOutlinePlus className="text-sm" />
@@ -75,13 +81,17 @@ const BacklogHeader: React.FC<{ project: Project }> = ({ project }) => {
           </Button>
         </NotImplemented>
       </div>
-      <EmtpyIssue
-        data-state={isCreatingTest ? "open" : "closed"}
-        className="mb-2 [&[data-state=closed]]:hidden"
-        onCreate={({ name }) => handleCreateTest(name)}
-        onCancel={() => setIsCreatingTest(false)}
-        isCreating={isCreating}
-      />
+      {canCreate ? (
+        <EmtpyIssue
+          data-state={isCreatingTest ? "open" : "closed"}
+          className="mb-2 [&[data-state=closed]]:hidden"
+          onCreate={({ name, requestedCount }) =>
+            handleCreateTest(name, requestedCount)
+          }
+          onCancel={() => setIsCreatingTest(false)}
+          isCreating={isCreating}
+        />
+      ) : null}
     </div>
   );
 };

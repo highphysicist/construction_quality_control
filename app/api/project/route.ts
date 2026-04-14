@@ -1,7 +1,10 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/server/db";
+import { type NextRequest, NextResponse } from "next/server";
 import { type Project } from "@prisma/client";
-import { initProject } from "@/server/functions";
+import {
+  ensureAuthenticatedAdminUser,
+  getInitialProjectFromServer,
+} from "@/server/functions";
+import { getAuth } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,21 +12,13 @@ export type GetProjectResponse = {
   project: Project | null;
 };
 
-export async function GET() {
-  let project = await prisma.project.findUnique({
-    where: {
-      key: "JIRA-CLONE",
-    },
-  });
-
-  if (!project) {
-    await initProject();
-    project = await prisma.project.findUnique({
-      where: {
-        key: "JIRA-CLONE",
-      },
-    });
+export async function GET(req: NextRequest) {
+  const { userId } = getAuth(req);
+  if (userId) {
+    await ensureAuthenticatedAdminUser(userId);
   }
+
+  const project = await getInitialProjectFromServer();
 
   // return NextResponse.json<GetProjectResponse>({ project });
   return NextResponse.json({ project });

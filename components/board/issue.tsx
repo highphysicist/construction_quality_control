@@ -41,7 +41,7 @@ const Issue: React.FC<{
           className={clsx(
             isDragging && "bg-white",
             isChild ? "ml-0" : "",
-            "group my-0.5 max-w-full rounded-[3px] border-[0.3px] border-gray-300 bg-white p-2 text-sm shadow-sm shadow-gray-300 hover:bg-gray-200 "
+            "surface-motion group my-0.5 max-w-full rounded-[3px] border-[0.3px] border-gray-300 bg-white p-2 text-sm shadow-sm shadow-gray-300 hover:-translate-y-0.5 hover:bg-gray-200 hover:shadow-md"
           )}
         >
           <div className="flex items-start justify-between">

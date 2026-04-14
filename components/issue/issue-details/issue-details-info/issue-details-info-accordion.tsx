@@ -15,8 +15,10 @@ import { useSprints } from "@/hooks/query-hooks/use-sprints";
 import { IssueAssigneeSelect } from "../../issue-select-assignee";
 import { useIssues } from "@/hooks/query-hooks/use-issues";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
-
-const REVIEW_OPTIONS: WorkflowReviewStatus[] = ["PENDING", "OK", "NOT_OK"];
+import { isParentTest, isSubtask } from "@/utils/helpers";
+import { SoilMoistureEditorModal } from "./soil-moisture-editor-modal";
+import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
+import { canEditTestConfiguration, canManageAssignee } from "@/utils/workflow";
 
 const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   issue,
@@ -26,6 +28,9 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   const { sprints } = useSprints();
   const { user } = useUser();
   const [openAccordion, setOpenAccordion] = useState("details");
+  const actor = useCurrentWorkflowActor();
+  const canEditConfig = canEditTestConfiguration(actor, issue);
+  const canAssign = canManageAssignee(actor, issue);
 
   function handleAutoAssign() {
     if (!isAuthenticated) {
@@ -41,6 +46,9 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
   }
 
   function updateMoistureFields(payload: {
+    requestedCount?: number | null;
+    chainage?: string | null;
+    truckDetails?: string | null;
     initialWeight?: number | null;
     finalWeight?: number | null;
     sampleLabel?: string | null;
@@ -94,9 +102,10 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
               <Button
                 onClick={handleAutoAssign}
                 data-state={issue.assignee ? "assigned" : "unassigned"}
+                disabled={!canAssign}
                 customColors
                 customPadding
-                className="mt-1 hidden text-sm text-blue-600 underline-offset-2 hover:underline [&[data-state=unassigned]]:flex"
+                className="mt-1 hidden text-sm text-blue-600 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 [&[data-state=unassigned]]:flex"
               >
                 Assign to me
               </Button>
@@ -128,12 +137,86 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
         </AccordionContent>
       </AccordionItem>
 
-      <AccordionItem value={"soil-moisture"}>
+      {isParentTest(issue) ? (
+        <AccordionItem value={"test-config"}>
+          <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
+            <div className="flex items-center gap-x-1">
+              <span className="text-sm">Test Configuration</span>
+              <span className="text-xs text-gray-500">
+                (Required instances, chainage, truck details)
+              </span>
+            </div>
+            <FaChevronUp
+              className="mr-2 text-xs text-black transition-transform"
+              aria-hidden
+            />
+          </AccordionTrigger>
+          <AccordionContent className="flex flex-col gap-y-3 bg-white px-3 py-3">
+            <div className="grid grid-cols-3 items-center gap-2">
+              <span className="text-sm font-semibold text-gray-600">
+                Required Test Instances
+              </span>
+              <input
+                type="number"
+                min={1}
+                value={issue.requestedCount ?? 1}
+                disabled={!canEditConfig}
+                onChange={(e) =>
+                  updateMoistureFields({
+                    requestedCount: Number(e.currentTarget.value) || 1,
+                  })
+                }
+                className="col-span-2 rounded border px-2 py-1 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 items-center gap-2 rounded bg-slate-50 px-2 py-1.5">
+              <span className="text-sm font-semibold text-gray-600">
+                Existing Test Instances
+              </span>
+              <span className="col-span-2 text-sm text-slate-700">
+                {issue.children.length}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 items-center gap-2">
+              <span className="text-sm font-semibold text-gray-600">Chainage</span>
+              <input
+                value={issue.chainage ?? ""}
+                disabled={!canEditConfig}
+                onChange={(e) =>
+                  updateMoistureFields({ chainage: e.currentTarget.value || null })
+                }
+                placeholder="0+120 to 0+180"
+                className="col-span-2 rounded border px-2 py-1 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 items-start gap-2">
+              <span className="pt-1 text-sm font-semibold text-gray-600">
+                Truck Details
+              </span>
+              <textarea
+                value={issue.truckDetails ?? ""}
+                disabled={!canEditConfig}
+                onChange={(e) =>
+                  updateMoistureFields({ truckDetails: e.currentTarget.value || null })
+                }
+                rows={2}
+                className="col-span-2 rounded border px-2 py-1 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+              />
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      ) : null}
+
+      {isSubtask(issue) ? (
+        <AccordionItem value={"soil-moisture"}>
         <AccordionTrigger className="flex w-full items-center justify-between p-2 font-medium hover:bg-gray-100 [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:border-b">
           <div className="flex items-center gap-x-1">
             <span className="text-sm">Soil Moisture Test Slip</span>
             <span className="text-xs text-gray-500">
-              (Inputs, computed values, inspections)
+              (Editable in dedicated modal)
             </span>
           </div>
           <FaChevronUp
@@ -141,141 +224,93 @@ const IssueDetailsInfoAccordion: React.FC<{ issue: IssueType }> = ({
             aria-hidden
           />
         </AccordionTrigger>
-        <AccordionContent className="flex flex-col gap-y-3 bg-white px-3 py-3">
-          <div className="grid grid-cols-3 items-center gap-2">
-            <span className="text-sm font-semibold text-gray-600">Sample ID</span>
-            <input
-              value={issue.sampleLabel ?? ""}
-              onChange={(e) =>
-                updateMoistureFields({ sampleLabel: e.currentTarget.value || null })
-              }
-              placeholder="Sample A"
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            />
-          </div>
+        <AccordionContent className="bg-white px-3 py-3">
+          <div className="rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Test Instance Snapshot
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <SummaryPill
+                    label="Sample"
+                    value={issue.sampleLabel ?? "Not set"}
+                  />
+                  <SummaryPill
+                    label="Moisture Loss"
+                    value={
+                      issue.moistureWeight == null
+                        ? "-"
+                        : `${issue.moistureWeight.toFixed(3)} g`
+                    }
+                  />
+                  <SummaryPill
+                    label="Moisture %"
+                    value={
+                      issue.moisturePct == null
+                        ? "-"
+                        : `${issue.moisturePct.toFixed(3)}%`
+                    }
+                  />
+                </div>
+              </div>
+              <SoilMoistureEditorModal
+                issue={issue}
+                onUpdate={updateMoistureFields}
+              />
+            </div>
 
-          <div className="grid grid-cols-3 items-center gap-2">
-            <span className="text-sm font-semibold text-gray-600">
-              Initial Weight (g)
-            </span>
-            <input
-              type="number"
-              step="0.001"
-              value={issue.initialWeight ?? ""}
-              onChange={(e) =>
-                updateMoistureFields({
-                  initialWeight:
-                    e.currentTarget.value === ""
-                      ? null
-                      : Number(e.currentTarget.value),
-                })
-              }
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 items-center gap-2">
-            <span className="text-sm font-semibold text-gray-600">
-              Final Weight (g)
-            </span>
-            <input
-              type="number"
-              step="0.001"
-              value={issue.finalWeight ?? ""}
-              onChange={(e) =>
-                updateMoistureFields({
-                  finalWeight:
-                    e.currentTarget.value === ""
-                      ? null
-                      : Number(e.currentTarget.value),
-                })
-              }
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 items-center gap-2 rounded bg-slate-50 px-2 py-1.5">
-            <span className="text-sm font-semibold text-gray-600">Moisture Loss</span>
-            <span className="col-span-2 text-sm text-slate-700">
-              {issue.moistureWeight == null ? "-" : `${issue.moistureWeight.toFixed(3)} g`}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 items-center gap-2 rounded bg-slate-50 px-2 py-1.5">
-            <span className="text-sm font-semibold text-gray-600">Moisture %</span>
-            <span className="col-span-2 text-sm text-slate-700">
-              {issue.moisturePct == null ? "-" : `${issue.moisturePct.toFixed(3)}%`}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 items-center gap-2">
-            <span className="text-sm font-semibold text-gray-600">Inspection L1</span>
-            <select
-              value={issue.levelOneStatus}
-              onChange={(e) =>
-                updateMoistureFields({
-                  levelOneStatus: e.currentTarget.value as WorkflowReviewStatus,
-                })
-              }
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            >
-              {REVIEW_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-3 items-start gap-2">
-            <span className="pt-1 text-sm font-semibold text-gray-600">
-              L1 Comment
-            </span>
-            <textarea
-              value={issue.levelOneNote ?? ""}
-              onChange={(e) =>
-                updateMoistureFields({ levelOneNote: e.currentTarget.value || null })
-              }
-              rows={2}
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 items-center gap-2">
-            <span className="text-sm font-semibold text-gray-600">Inspection L2</span>
-            <select
-              value={issue.levelTwoStatus}
-              onChange={(e) =>
-                updateMoistureFields({
-                  levelTwoStatus: e.currentTarget.value as WorkflowReviewStatus,
-                })
-              }
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            >
-              {REVIEW_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-3 items-start gap-2">
-            <span className="pt-1 text-sm font-semibold text-gray-600">
-              L2 Comment
-            </span>
-            <textarea
-              value={issue.levelTwoNote ?? ""}
-              onChange={(e) =>
-                updateMoistureFields({ levelTwoNote: e.currentTarget.value || null })
-              }
-              rows={2}
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-            />
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <ReviewCard
+                title="Inspection L1"
+                status={issue.levelOneStatus}
+                note={issue.levelOneNote}
+              />
+              <ReviewCard
+                title="Inspection L2"
+                status={issue.levelTwoStatus}
+                note={issue.levelTwoNote}
+              />
+            </div>
           </div>
         </AccordionContent>
       </AccordionItem>
+      ) : null}
     </Accordion>
+  );
+};
+
+const SummaryPill: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => {
+  return (
+    <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+      <span className="mr-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </span>
+      <span className="font-medium text-slate-800">{value}</span>
+    </div>
+  );
+};
+
+const ReviewCard: React.FC<{
+  title: string;
+  status: WorkflowReviewStatus;
+  note: string | null;
+}> = ({ title, status, note }) => {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-x-3">
+        <span className="text-sm font-semibold text-slate-800">{title}</span>
+        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+          {status}
+        </span>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-slate-600">
+        {note?.trim() || "No inspection note added yet."}
+      </p>
+    </div>
   );
 };
 

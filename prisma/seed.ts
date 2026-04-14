@@ -8,6 +8,7 @@ import {
   generateInitialUserComments,
   generateInitialUserIssues,
   generateInitialUserSprints,
+  LEGACY_DEMO_USER_IDS,
 } from "./seed-data";
 const prisma = new PrismaClient();
 
@@ -28,6 +29,13 @@ async function initProject() {
   });
 }
 async function initDefaultUsers() {
+  await prisma.defaultUser.deleteMany({
+    where: {
+      id: {
+        in: [...LEGACY_DEMO_USER_IDS],
+      },
+    },
+  });
   await Promise.all(
     defaultUsers.map(
       async (user) =>
@@ -53,6 +61,13 @@ async function initDefaultUsers() {
   );
 }
 async function initDefaultProjectMembers() {
+  await prisma.member.deleteMany({
+    where: {
+      id: {
+        in: [...LEGACY_DEMO_USER_IDS],
+      },
+    },
+  });
   await Promise.all(
     defaultUsers.map(
       async (user) =>

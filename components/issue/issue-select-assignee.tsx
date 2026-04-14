@@ -18,6 +18,8 @@ import { toast } from "../toast";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
 import { type DefaultUser } from "@prisma/client";
 import { getUserRoleLabel } from "@/utils/helpers";
+import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
+import { canManageAssignee } from "@/utils/workflow";
 
 const IssueAssigneeSelect: React.FC<{
   issue: IssueType;
@@ -27,6 +29,7 @@ const IssueAssigneeSelect: React.FC<{
   const { members } = useProject();
   const { updateIssue, isUpdating } = useIssues();
   const [isAuthenticated, openAuthModal] = useIsAuthenticated();
+  const actor = useCurrentWorkflowActor();
   const unassigned = {
     id: "unassigned",
     name: "Unassigned",
@@ -37,7 +40,11 @@ const IssueAssigneeSelect: React.FC<{
   const [selected, setSelected] = useState<DefaultUser["id"] | null>(
     issue.assignee?.id ?? null
   );
+  const canEditAssignee = canManageAssignee(actor, issue);
   function handleSelectChange(value: DefaultUser["id"]) {
+    if (!canEditAssignee) {
+      return;
+    }
     if (!isAuthenticated) {
       openAuthModal();
       return;
@@ -64,11 +71,12 @@ const IssueAssigneeSelect: React.FC<{
     <Select onValueChange={handleSelectChange}>
       <SelectTrigger
         onClick={(e) => e.stopPropagation()}
-        disabled={isUpdating}
+        disabled={isUpdating || !canEditAssignee}
         className={clsx(
           avatarOnly
             ? "rounded-full transition-all duration-200 hover:brightness-75"
             : "-ml-2 rounded-[3px] py-1 pl-2 pr-8 hover:bg-gray-200",
+          !canEditAssignee && "cursor-not-allowed opacity-60 hover:brightness-100",
           "flex w-fit items-center gap-x-1 whitespace-nowrap"
         )}
       >

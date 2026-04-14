@@ -37,10 +37,12 @@ const ChildIssueList: React.FC<{
     name,
     type,
     parentId,
+    requestedCount,
   }: {
     name: string;
     type: IssueType["type"];
     parentId: IssueType["id"] | null;
+    requestedCount?: number | null;
   }) {
     if (!isAuthenticated) {
       openAuthModal();
@@ -56,6 +58,7 @@ const ChildIssueList: React.FC<{
         parentId,
         sprintId: null,
         reporterId: null,
+        requestedCount,
       },
       {
         onSuccess: () => {
@@ -91,8 +94,8 @@ const ChildIssueList: React.FC<{
       <EmtpyIssue
         data-state={isEditing || isAddingChildIssue ? "open" : "closed"}
         className="[&[data-state=closed]]:hidden"
-        onCreate={({ name, type, parentId }) =>
-          handleCreateIssue({ name, type, parentId })
+        onCreate={({ name, type, parentId, requestedCount }) =>
+          handleCreateIssue({ name, type, parentId, requestedCount })
         }
         onCancel={() => {
           setIsEditing(false);
@@ -163,8 +166,7 @@ const ChildIssue: React.FC<{ issue: IssueType }> = ({ issue }) => {
         <IssueAssigneeSelect issue={issue} avatarSize={20} avatarOnly />
         <IssueSelectStatus
           key={issue.id + issue.status}
-          currentStatus={issue.status}
-          issueId={issue.id}
+          issue={issue}
         />
       </div>
     </div>

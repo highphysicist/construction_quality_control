@@ -19,6 +19,8 @@ import {
   SelectViewport,
 } from "@/components/ui/select";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
+import { useCurrentWorkflowActor } from "@/hooks/use-current-workflow-actor";
+import { getAllowedStatuses } from "@/utils/workflow";
 
 export const statuses: StatusObject[] = [
   {
@@ -40,6 +42,13 @@ export const statuses: StatusObject[] = [
     smBgColor: "#fff7e5",
     lgBgColor: "#b45f06",
     smTextColor: "#9a4d00",
+    lgTextColor: "#fff",
+  },
+  {
+    value: "INSPECTION_L2",
+    smBgColor: "#fde7dc",
+    lgBgColor: "#c2410c",
+    smTextColor: "#9a3412",
     lgTextColor: "#fff",
   },
   {
@@ -65,33 +74,39 @@ type StatusMap = {
 export const statusMap: StatusMap = {
   DONE: "DONE",
   INSPECTION: "INSPECTION L1",
+  INSPECTION_L2: "INSPECTION L2",
   IN_PROGRESS: "TESTING",
   TODO: "RFI",
 };
 
 const IssueSelectStatus: React.FC<{
-  currentStatus: IssueType["status"];
-  issueId: string;
+  issue: IssueType;
   variant?: "sm" | "lg";
-}> = ({ currentStatus, issueId, variant = "sm" }) => {
+}> = ({ issue, variant = "sm" }) => {
   const [selected, setSelected] = useState<StatusObject>(
     () =>
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      statuses.find((status) => status.value == currentStatus) ?? statuses[0]!
+      statuses.find((status) => status.value == issue.status) ?? statuses[0]!
   );
 
   const { updateIssue, isUpdating } = useIssues();
   const [isAuthenticated, openAuthModal] = useIsAuthenticated();
+  const actor = useCurrentWorkflowActor();
+  const allowedStatuses = getAllowedStatuses(actor, issue);
+  const canChangeStatus = allowedStatuses.length > 1;
 
   function handleSelectChange(value: IssueType["status"]) {
     if (!isAuthenticated) {
       openAuthModal();
       return;
     }
+    if (!allowedStatuses.includes(value)) {
+      return;
+    }
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const newStatus = statuses.find((status) => status.value == value)!;
     updateIssue({
-      issueId,
+      issueId: issue.id,
       status: value,
     });
     setSelected(newStatus);
@@ -102,7 +117,7 @@ const IssueSelectStatus: React.FC<{
       <Select onValueChange={handleSelectChange}>
         <SelectTrigger
           onClick={(e) => e.stopPropagation()}
-          disabled={isUpdating}
+          disabled={isUpdating || !canChangeStatus}
           // TODO: Colors could be managed with data-state?
           style={{
             backgroundColor:
@@ -113,7 +128,7 @@ const IssueSelectStatus: React.FC<{
           className={clsx(
             variant == "sm" && "bg-opacity-20 px-1.5 py-0.5 text-xs font-bold",
             variant == "lg" && "my-2 px-3 py-1.5 text-[16px] font-semibold",
-            isUpdating && "cursor-not-allowed",
+            (isUpdating || !canChangeStatus) && "cursor-not-allowed opacity-60",
             "flex items-center gap-x-1 whitespace-nowrap rounded-[3px] focus:ring-2"
           )}
         >
@@ -130,7 +145,9 @@ const IssueSelectStatus: React.FC<{
           <SelectContent position="popper">
             <SelectViewport className="w-60 rounded-md border border-gray-300 bg-white pt-2 shadow-md">
               <SelectGroup>
-                {statuses.map((status) => (
+                {statuses
+                  .filter((status) => allowedStatuses.includes(status.value))
+                  .map((status) => (
                   <SelectItem
                     key={status.value}
                     value={status.value}

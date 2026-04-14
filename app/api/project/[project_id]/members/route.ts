@@ -5,6 +5,8 @@ import { prisma } from "@/server/db";
 import { type DefaultUser } from "@prisma/client";
 import { clerkClient } from "@clerk/nextjs";
 import { filterUserForClient } from "@/utils/helpers";
+import { getAuth } from "@clerk/nextjs/server";
+import { ensureAuthenticatedAdminUser } from "@/server/functions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,10 @@ type MembersParams = {
 };
 
 export async function GET(req: NextRequest, { params }: MembersParams) {
+  const { userId } = getAuth(req);
+  if (userId) {
+    await ensureAuthenticatedAdminUser(userId);
+  }
   const { project_id } = params;
   const members = await prisma.member.findMany({
     where: {
