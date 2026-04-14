@@ -6,7 +6,6 @@ import {
   DropdownTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FaChevronDown } from "react-icons/fa";
-import { capitalize } from "@/utils/helpers";
 import { TooltipWrapper } from "@/components/ui/tooltip";
 import { type IssueType } from "@/utils/types";
 import { ISSUE_TYPES } from "@/components/issue/issue-select-type";
@@ -14,6 +13,7 @@ import { IssueIcon } from "@/components/issue/issue-icon";
 import { useFiltersContext } from "@/context/use-filters-context";
 import { Button } from "@/components/ui/button";
 import { CountBall } from "./issue/issue-status-count";
+import { getIssueTypeLabel } from "@/utils/helpers";
 
 const IssueTypeFilter: React.FC = () => {
   const { issueTypes, setIssueTypes } = useFiltersContext();
@@ -35,7 +35,7 @@ const IssueTypeFilter: React.FC = () => {
           customColors
           className="flex items-center  gap-x-2 transition-all duration-200 hover:bg-gray-200"
         >
-          <span className="text-sm">Type</span>
+          <span className="text-sm">Record</span>
           <CountBall
             count={issueTypes.length}
             className="bg-inprogress text-xs text-white"
@@ -71,9 +71,9 @@ const IssueTypeFilter: React.FC = () => {
                 />
 
                 <IssueIcon issueType={type} />
-                <TooltipWrapper text={capitalize(type)}>
+                <TooltipWrapper text={getIssueTypeLabel(type)}>
                   <span className="text-sm text-gray-700">
-                    {capitalize(type)}
+                    {getIssueTypeLabel(type)}
                   </span>
                 </TooltipWrapper>
               </div>

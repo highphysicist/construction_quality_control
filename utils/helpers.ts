@@ -1,7 +1,7 @@
 import { type IssueCountType } from "./types";
 import { type IssueType } from "@/utils/types";
 import { type clerkClient } from "@clerk/nextjs";
-import { type DefaultUser, type Issue } from "@prisma/client";
+import { type DefaultUser, type Issue, type UserRole } from "@prisma/client";
 
 type Value<T> = T extends Promise<infer U> ? U : T;
 
@@ -53,6 +53,34 @@ export function isSubtask(issue: IssueType | null) {
   return issue.type == "SUBTASK";
 }
 
+export function isParentTest(issue: IssueType | null) {
+  if (!issue) return false;
+  return issue.type === "TASK" && !issue.parentId;
+}
+
+export function getIssueTypeLabel(type: IssueType["type"]) {
+  if (type === "TASK") return "Test";
+  if (type === "SUBTASK") return "Test Instance";
+  if (type === "EPIC") return "Template";
+  if (type === "STORY") return "Story";
+  if (type === "BUG") return "Bug";
+  return type;
+}
+
+export function getWorkflowTypeLabel() {
+  return "Soil Moisture";
+}
+
+export function getUserRoleLabel(role: UserRole | null | undefined) {
+  if (!role) return "";
+  if (role === "ADMIN") return "Admin";
+  if (role === "QUALITY_MANAGER") return "Quality Manager";
+  if (role === "QUALITY_TESTER") return "Quality Tester";
+  if (role === "QUALITY_INSPECTOR_L1") return "Quality Inspector L1";
+  if (role === "QUALITY_INSPECTOR_L2") return "Quality Inspector L2";
+  return role;
+}
+
 export function hasChildren(issue: IssueType | IssueType["parent"] | null) {
   if (!issue) return false;
   return issue.children.length > 0;
@@ -76,6 +104,7 @@ export function filterUserForClient(
     name: `${user.firstName ?? ""} ${user.lastName ?? ""}`,
     email: user?.emailAddresses[0]?.emailAddress ?? "",
     avatar: user.imageUrl,
+    role: null,
   };
 }
 

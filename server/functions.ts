@@ -2,20 +2,32 @@ import { filterUserForClient, generateIssuesForClient } from "@/utils/helpers";
 import { type UserResource } from "@clerk/types";
 import { clerkClient } from "@clerk/nextjs";
 import {
+  DEMO_PROJECT_ID,
+  DEMO_PROJECT_KEY,
   defaultUsers,
   generateInitialUserComments,
   generateInitialUserIssues,
   generateInitialUserSprints,
+  isLegacyDemoIssue,
 } from "../prisma/seed-data";
 import { prisma } from "./db";
 import { SprintStatus } from "@prisma/client";
 
 async function ensureProjectExists() {
   const existingProject = await prisma.project.findUnique({
-    where: { key: "JIRA-CLONE" },
+    where: { id: DEMO_PROJECT_ID },
   });
 
   if (existingProject) {
+    if (existingProject.name !== "Construction Quality Control") {
+      await prisma.project.update({
+        where: { id: DEMO_PROJECT_ID },
+        data: {
+          name: "Construction Quality Control",
+          key: DEMO_PROJECT_KEY,
+        },
+      });
+    }
     await initDefaultUsers();
     await initDefaultProjectMembers();
     return existingProject;
@@ -26,7 +38,7 @@ async function ensureProjectExists() {
   await initDefaultProjectMembers();
 
   return prisma.project.findUnique({
-    where: { key: "JIRA-CLONE" },
+    where: { id: DEMO_PROJECT_ID },
   });
 }
 
@@ -38,7 +50,32 @@ async function ensureUserWorkspace(userId: string) {
     where: { creatorId: userId, isDeleted: false },
   });
 
-  if (existingSprints.length > 0 || existingIssues.length > 0) {
+  const hasLegacyWorkspace = existingIssues.some((issue) =>
+    isLegacyDemoIssue(issue.name)
+  );
+
+  if (hasLegacyWorkspace) {
+    const issueIds = existingIssues.map((issue) => issue.id);
+    await prisma.comment.deleteMany({
+      where: {
+        issueId: {
+          in: issueIds,
+        },
+      },
+    });
+    await prisma.issue.deleteMany({
+      where: {
+        creatorId: userId,
+      },
+    });
+    await prisma.sprint.deleteMany({
+      where: {
+        creatorId: userId,
+      },
+    });
+  }
+
+  if (!hasLegacyWorkspace && (existingSprints.length > 0 || existingIssues.length > 0)) {
     return;
   }
 
@@ -138,13 +175,16 @@ export async function getInitialSprintsFromServer(
 export async function initProject() {
   await prisma.project.upsert({
     where: {
-      id: "init-project-id-dq8yh-d0as89hjd",
+      id: DEMO_PROJECT_ID,
     },
-    update: {},
+    update: {
+      name: "Construction Quality Control",
+      key: DEMO_PROJECT_KEY,
+    },
     create: {
-      id: "init-project-id-dq8yh-d0as89hjd",
-      name: "Jira Clone Project",
-      key: "JIRA-CLONE",
+      id: DEMO_PROJECT_ID,
+      name: "Construction Quality Control",
+      key: DEMO_PROJECT_KEY,
     },
   });
 }
@@ -157,13 +197,17 @@ export async function initDefaultUsers() {
             id: user.id,
           },
           update: {
+            name: user.name,
+            email: user.email,
             avatar: user.avatar,
+            role: user.role,
           },
           create: {
             id: user.id,
             email: user.email,
             name: user.name,
             avatar: user.avatar,
+            role: user.role,
           },
         })
     )
@@ -177,10 +221,12 @@ export async function initDefaultProjectMembers() {
           where: {
             id: user.id,
           },
-          update: {},
+          update: {
+            projectId: DEMO_PROJECT_ID,
+          },
           create: {
             id: user.id,
-            projectId: "init-project-id-dq8yh-d0as89hjd",
+            projectId: DEMO_PROJECT_ID,
           },
         })
     )

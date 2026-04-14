@@ -17,6 +17,7 @@ import { Avatar } from "../avatar";
 import { toast } from "../toast";
 import { useIsAuthenticated } from "@/hooks/use-is-authed";
 import { type DefaultUser } from "@prisma/client";
+import { getUserRoleLabel } from "@/utils/helpers";
 
 const IssueAssigneeSelect: React.FC<{
   issue: IssueType;
@@ -31,6 +32,7 @@ const IssueAssigneeSelect: React.FC<{
     name: "Unassigned",
     avatar: undefined,
     email: "",
+    role: null,
   };
   const [selected, setSelected] = useState<DefaultUser["id"] | null>(
     issue.assignee?.id ?? null
@@ -104,9 +106,16 @@ const IssueAssigneeSelect: React.FC<{
                         src={member?.avatar}
                         alt={`${member?.name ?? "Unassigned"}`}
                       />
-                      <span className="rounded-md bg-opacity-30 px-2 text-sm">
-                        {member.name}
-                      </span>
+                      <div className="flex flex-col px-2">
+                        <span className="rounded-md bg-opacity-30 text-sm">
+                          {member.name}
+                        </span>
+                        {member.role ? (
+                          <span className="text-xs text-gray-500">
+                            {getUserRoleLabel(member.role)}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </SelectItem>
                 ))}

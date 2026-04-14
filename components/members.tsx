@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Avatar } from "./avatar";
 import { NotImplemented } from "./not-implemented";
 import { AddPeopleIcon } from "./svgs";
+import { getUserRoleLabel } from "@/utils/helpers";
 
 const Members = () => {
   const { members } = useProject();
@@ -13,6 +14,7 @@ const Members = () => {
     name: "Unassigned",
     avatar: undefined,
     email: "",
+    role: null,
   };
 
   function handleAssigneeFilter(id: string) {
@@ -36,6 +38,11 @@ const Members = () => {
               onClick={() => handleAssigneeFilter(member.id)}
               customColors
               customPadding
+              title={
+                member.id === "unassigned"
+                  ? member.name
+                  : `${member.name}${member.role ? ` • ${getUserRoleLabel(member.role)}` : ""}`
+              }
               data-state={
                 assignees.includes(member.id) ? "selected" : "not-selected"
               }

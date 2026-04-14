@@ -17,6 +17,7 @@ import {
   generateIssuesForClient,
 } from "@/utils/helpers";
 import { clerkClient } from "@clerk/nextjs";
+import { DEMO_ADMIN_ID } from "@/prisma/seed-data";
 
 export const dynamic = "force-dynamic";
 
@@ -221,7 +222,7 @@ export async function POST(req: NextRequest) {
       key: `ISSUE-${k}`,
       name: valid.name,
       type: valid.type,
-      reporterId: valid.reporterId ?? "user_2PwZmH2xP5aE0svR6hDH4AwDlcu", // Rogan as default reporter
+        reporterId: valid.reporterId ?? DEMO_ADMIN_ID,
       sprintId: valid.sprintId ?? undefined,
       sprintPosition: positionToInsert,
       boardPosition,

@@ -14,7 +14,13 @@ import { MdEdit } from "react-icons/md";
 import { IssueTitle } from "../issue/issue-title";
 import { useSelectedIssueContext } from "@/context/use-selected-issue-context";
 import { type IssueType } from "@/utils/types";
-import { hasChildren, isEpic, hexToRgba } from "@/utils/helpers";
+import {
+  getWorkflowTypeLabel,
+  hasChildren,
+  hexToRgba,
+  isEpic,
+  isParentTest,
+} from "@/utils/helpers";
 import { IssueAssigneeSelect } from "../issue/issue-select-assignee";
 import { DARK_COLORS, LIGHT_COLORS } from "../color-picker";
 
@@ -79,6 +85,11 @@ const Issue: React.FC<{
                 <MdEdit className="text-sm" />
               </Button>
               {isEpic(issue.parent) ? <EpicName issue={issue.parent} /> : null}
+              {isParentTest(issue) ? (
+                <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+                  {getWorkflowTypeLabel()}
+                </span>
+              ) : null}
             </div>
           </div>
           <IssueContextMenu isEditing={isEditing} className="flex-auto">

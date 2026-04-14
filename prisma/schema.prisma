@@ -56,6 +56,14 @@ enum WorkflowReviewStatus {
     NOT_OK
 }
 
+enum UserRole {
+    ADMIN
+    QUALITY_MANAGER
+    QUALITY_TESTER
+    QUALITY_INSPECTOR_L1
+    QUALITY_INSPECTOR_L2
+}
+
 model Issue {
     id             String      @id @default(uuid())
     key            String
@@ -148,4 +156,5 @@ model DefaultUser {
     name   String
     email  String
     avatar String?
+    role   UserRole?
 }

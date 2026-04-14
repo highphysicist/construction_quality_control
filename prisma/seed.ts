@@ -2,6 +2,8 @@
 
 import { PrismaClient } from "@prisma/client";
 import {
+  DEMO_PROJECT_ID,
+  DEMO_PROJECT_KEY,
   defaultUsers,
   generateInitialUserComments,
   generateInitialUserIssues,
@@ -12,13 +14,16 @@ const prisma = new PrismaClient();
 async function initProject() {
   await prisma.project.upsert({
     where: {
-      id: "init-project-id-dq8yh-d0as89hjd",
+      id: DEMO_PROJECT_ID,
     },
-    update: {},
+    update: {
+      name: "Construction Quality Control",
+      key: DEMO_PROJECT_KEY,
+    },
     create: {
-      id: "init-project-id-dq8yh-d0as89hjd",
-      name: "Jira Clone Project",
-      key: "JIRA-CLONE",
+      id: DEMO_PROJECT_ID,
+      name: "Construction Quality Control",
+      key: DEMO_PROJECT_KEY,
     },
   });
 }
@@ -31,13 +36,17 @@ async function initDefaultUsers() {
             id: user.id,
           },
           update: {
+            name: user.name,
+            email: user.email,
             avatar: user.avatar,
+            role: user.role,
           },
           create: {
             id: user.id,
             email: user.email,
             name: user.name,
             avatar: user.avatar,
+            role: user.role,
           },
         })
     )
@@ -51,10 +60,12 @@ async function initDefaultProjectMembers() {
           where: {
             id: user.id,
           },
-          update: {},
+          update: {
+            projectId: DEMO_PROJECT_ID,
+          },
           create: {
             id: user.id,
-            projectId: "init-project-id-dq8yh-d0as89hjd",
+            projectId: DEMO_PROJECT_ID,
           },
         })
     )
@@ -123,11 +134,11 @@ async function main() {
   // Create default project members
   await initDefaultProjectMembers();
   // Create default issues
-  await initDefaultIssues("");
+  await initDefaultIssues("init");
   // Create comments for default issues
-  await initDefaultIssueComments("");
+  await initDefaultIssueComments("init");
   // Create default sprints
-  await initDefaultSprints("");
+  await initDefaultSprints("init");
 }
 main()
   .then(async () => {

@@ -37,11 +37,7 @@ const ListGroup: React.FC<{ className?: string }> = ({ className }) => {
     (issues: IssueType[] | undefined, sprintId: string | null) => {
       if (!issues) return [];
       const filteredIssues = issues.filter((issue) => {
-        if (
-          issue.sprintId === sprintId &&
-          !isEpic(issue) &&
-          !isSubtask(issue)
-        ) {
+        if (issue.sprintId === sprintId && !isEpic(issue)) {
           if (issueNotInSearch({ issue, search })) return false;
           if (assigneeNotInFilters({ issue, assignees })) return false;
           if (epicNotInFilters({ issue, epics })) return false;
@@ -166,7 +162,10 @@ function getSortedSprintIssues({
   sprintId: Sprint["id"] | null;
 }) {
   return activeIssues
-    .filter((issue) => issue.sprintId === sprintId)
+    .filter(
+      (issue) =>
+        issue.sprintId === sprintId && !isSubtask(issue) && !isEpic(issue)
+    )
     .sort((a, b) => a.sprintPosition - b.sprintPosition);
 }
 

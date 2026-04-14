@@ -26,7 +26,7 @@ const IssueDetailsInfoActions: React.FC<{
           </span>
         </Button>
       </NotImplemented>
-      <TooltipWrapper text="Add child issue">
+      <TooltipWrapper text="Add test instance">
         <Button
           onClick={onAddChildIssue}
           customColors
@@ -37,7 +37,7 @@ const IssueDetailsInfoActions: React.FC<{
             data-state={variant === "sm" ? "sm" : "lg"}
             className="whitespace-nowrap text-sm  font-medium [&[data-state=lg]]:ml-2"
           >
-            {variant === "sm" ? null : "Add a child issue"}
+            {variant === "sm" ? null : "Add test instance"}
           </span>
         </Button>
       </TooltipWrapper>
