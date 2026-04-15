@@ -13,10 +13,49 @@ const useUpdateIssue = () => {
     ["issues"],
     api.issues.patchIssue,
     {
-      onMutate: async () => {
+      onMutate: async (newIssue) => {
         await queryClient.cancelQueries(["issues"]);
 
         const previousIssues = queryClient.getQueryData<IssueType[]>(["issues"]);
+
+        queryClient.setQueryData(["issues"], (old?: IssueType[]) => {
+          return (old ?? []).map((issue) => {
+            if (issue.id === newIssue.issueId) {
+              return {
+                ...issue,
+                ...newIssue,
+              } as IssueType;
+            }
+
+            if (issue.parentId === newIssue.issueId) {
+              return {
+                ...issue,
+                parent: issue.parent
+                  ? ({
+                      ...issue.parent,
+                      ...newIssue,
+                    } as IssueType["parent"])
+                  : issue.parent,
+              } as IssueType;
+            }
+
+            if (issue.id === newIssue.parentId) {
+              return {
+                ...issue,
+                children: issue.children.map((child) =>
+                  child.id === newIssue.issueId
+                    ? ({
+                        ...child,
+                        ...newIssue,
+                      } as IssueType)
+                    : child
+                ),
+              } as IssueType;
+            }
+
+            return issue;
+          });
+        });
 
         return { previousIssues };
       },

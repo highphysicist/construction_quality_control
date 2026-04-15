@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { BacklogIcon, BoardIcon, DevelopmentIcon, RoadmapIcon } from "./svgs";
+import { BacklogIcon, BoardIcon } from "./svgs";
 import {
   NavigationMenu,
   NavigationMenuLink,
@@ -22,12 +22,6 @@ const Sidebar: React.FC = () => {
   const { project } = useProject();
   const planningItems = [
     {
-      id: "roadmap",
-      label: "Roadmap",
-      icon: RoadmapIcon,
-      href: `/project/roadmap`,
-    },
-    {
       id: "backlog",
       label: "Backlog",
       icon: BacklogIcon,
@@ -39,16 +33,14 @@ const Sidebar: React.FC = () => {
       icon: BoardIcon,
       href: `/project/board`,
     },
-  ];
-
-  const developmentItems = [
     {
-      id: "development",
-      label: "Development",
-      icon: DevelopmentIcon,
-      href: `/project/`,
+      id: "retrospect",
+      label: "Retrospect",
+      icon: BacklogIcon,
+      href: `/retrospect`,
     },
   ];
+
   return (
     <div className="flex h-full w-64 flex-col gap-y-5 bg-gray-50 p-3 shadow-inner">
       <div className="my-5 flex items-center gap-x-2 px-3">
@@ -59,11 +51,9 @@ const Sidebar: React.FC = () => {
           <h2 className="-mb-[0.5px] text-sm font-semibold text-gray-600">
             {project?.name ?? "Project Name"}
           </h2>
-          <p className="text-xs text-gray-500">Software Project</p>
         </div>
       </div>
-      <NavList label={"PLANNING"} items={planningItems} />
-      <NavList label={"DEVELOPMENT"} items={developmentItems} />
+      <NavList label={"WORKFLOW"} items={planningItems} />
     </div>
   );
 };
@@ -86,11 +76,7 @@ const NavList: React.FC<{ items: NavItemType[]; label: string }> = ({
       >
         <NavigationMenuList>
           {items.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              disabled={label === "DEVELOPMENT"}
-            />
+            <NavItem key={item.id} item={item} />
           ))}
         </NavigationMenuList>
       </NavigationMenu>
